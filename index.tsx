@@ -99,7 +99,7 @@ const GlobalStyles = () => {
 
 
 // --- CONSTANTS & INITIAL STATE ---
-const oscColors = ['#1d4ed8', '#166534', '#b91c1c']; 
+const oscColors = ['#1d4ed8', '#166534', '#e74e1a']; 
 
 const initialADSR = { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.3 };
 const initialOsc = [
@@ -161,7 +161,8 @@ class Voice {
   }
 }
 const MAX_VOICES_PER_OSC = 8;
-async function generateImpulseResponse(audioCtx, model, duration, decay) {
+
+async function generateImpulseResponse(audioCtx, model, decayTime, duration) {
     const sampleRate = audioCtx.sampleRate;
     const length = sampleRate * duration;
     const impulse = audioCtx.createBuffer(2, length, sampleRate);
@@ -169,21 +170,24 @@ async function generateImpulseResponse(audioCtx, model, duration, decay) {
     for (let channelNum = 0; channelNum < 2; channelNum++) {
         const channelData = impulse.getChannelData(channelNum);
         for (let i = 0; i < length; i++) {
-            const t = i / length;
+            const t = i / sampleRate; // Time in seconds
             let envelope = 0;
-            switch(model) {
-                case 'plate':
-                    envelope = Math.exp(-t * 20) * (1 - t);
-                    break;
-                case 'room':
-                    envelope = Math.pow(1 - t, decay * 1.5);
-                    break;
-                case 'hall':
-                default:
-                    envelope = (1 - Math.exp(-t * 5)) * Math.pow(1 - t, decay);
-                    break;
+
+            if (model === 'plate') {
+                 // Plate: Fast buildup, long sustained metallic decay
+                 // Simulates metal plate vibration
+                 envelope = Math.exp(-t / (decayTime * 0.6)) * (1 - Math.exp(-t * 50)); 
+            } else if (model === 'room') {
+                 // Room: Quick exponential decay, dense early
+                 envelope = Math.exp(-t / (decayTime * 0.15));
+            } else {
+                 // Hall: Slower buildup (predelay feel), long exponential tail
+                 envelope = Math.exp(-t / (decayTime * 0.8)) * (1 - Math.exp(-t * 20));
             }
-            channelData[i] = (Math.random() * 2 - 1) * envelope;
+            
+            // Noise burst scaled down to prevent clipping the convolver output
+            // Boosted slightly (0.5) for "Depper" sound, relying on master reverb gain to mix
+            channelData[i] = (Math.random() * 2 - 1) * envelope * 0.5;
         }
     }
     return impulse;
@@ -200,28 +204,21 @@ function makeDistortionCurve(amount, model) {
     
     if (model === 'overdrive') {
         // High-Res Soft Clipping (Saturation)
-        // Simulates analog tape/tube saturation using a hyperbolic tangent function
-        // k controls the drive amount.
-        const k = 1 + amount * 20;
-        // Normalize the output so at low drive it's unity gain, at high drive it saturates
+        const k = 1 + amount * 30;
         curve[i] = Math.tanh(k * x) / Math.tanh(k);
         
     } else if (model === 'fuzz') {
         // High-Res Hard Clipping (Fuzz)
-        // Uses ArcTangent to create aggressive, squared-off edges typical of fuzz pedals
-        // The higher the amount, the more it approaches a square wave
-        const k = 1 + amount * 50;
+        // Aggressive Atan
+        const k = 1 + amount * 60;
         curve[i] = (2 / Math.PI) * Math.atan(k * x);
 
     } else if (model === 'crush') {
         // Bit-Depth Reduction (Quantization)
-        // Quantizes the signal to a lower bit depth (16 bit down to 1 bit)
-        // Clean mathematical quantization
-        const bits = 16 - (amount * 15); 
+        const bits = 16 - (amount * 14); // Down to 2 bits
         const steps = Math.pow(2, bits);
         curve[i] = Math.round(x * steps) / steps;
     } else {
-        // Default linear
         curve[i] = x;
     }
   }
@@ -289,7 +286,7 @@ const useSynth = (state, onStepChange) => {
 
       // 3. Reverb Chain
       const reverb = context.createConvolver();
-      reverb.buffer = await generateImpulseResponse(context, state.fx.reverb.model, state.fx.reverb.decay, 3);
+      reverb.buffer = await generateImpulseResponse(context, state.fx.reverb.model, state.fx.reverb.decay, 4);
       const reverbWetGain = context.createGain();
       const reverbInputGain = context.createGain();
       reverbWetGain.gain.value = 1.0; 
@@ -304,6 +301,8 @@ const useSynth = (state, onStepChange) => {
       delay.connect(masterGainRef.current);
 
       // Distortion Config
+      // Input Gain is driven by Send, but we can boost it here to ensure saturation
+      distoInputGain.gain.value = 1.0; 
       distoInputGain.connect(distoShaper);
       distoShaper.connect(distoOutputGain);
       distoOutputGain.connect(masterGainRef.current);
@@ -495,7 +494,8 @@ const useSynth = (state, onStepChange) => {
     if (!audioCtx || !reverbNode) return;
     const { model, decay } = state.fx.reverb;
     const timeoutId = setTimeout(() => {
-        generateImpulseResponse(audioCtx, model, decay, 3).then(impulse => {
+        // Regenerate impulse with new decay/model settings. Duration 4s for longer tails.
+        generateImpulseResponse(audioCtx, model, decay, 4).then(impulse => {
             if(reverbNode) reverbNode.buffer = impulse;
         });
     }, 50);
@@ -504,10 +504,37 @@ const useSynth = (state, onStepChange) => {
 
   // Distortion Effect Update
   useEffect(() => {
-      const { distoShaper } = fxNodesRef.current;
-      if (!distoShaper) return;
+      const { distoShaper, distoOutputGain, distoInputGain } = fxNodesRef.current;
+      if (!distoShaper || !distoOutputGain || !distoInputGain) return;
+      
       const { depth, model } = state.fx.distortion;
+      const audioCtx = audioCtxRef.current;
+      
       distoShaper.curve = makeDistortionCurve(depth, model);
+      
+      // --- Gain Staging for Distortion ---
+      let inputBoost = 1.0;
+      let outputAtten = 1.0;
+
+      if (model === 'fuzz') {
+          // Fuzz needs high input drive to clip hard, and significant output cut to match volume
+          inputBoost = 2.0 + depth * 6.0; 
+          outputAtten = 0.3 / (1 + depth * 5.0); 
+      } else if (model === 'overdrive') {
+          // Overdrive is softer, less extreme gain changes needed
+          inputBoost = 1.5 + depth * 3.0;
+          outputAtten = 0.7 / (1 + depth * 1.5);
+      } else if (model === 'crush') {
+          // Bitcrusher adds harmonics but not massive gain, slight boost
+          inputBoost = 1.0;
+          outputAtten = 1.0;
+      }
+      
+      if (audioCtx) {
+        distoInputGain.gain.setTargetAtTime(inputBoost, audioCtx.currentTime, 0.05);
+        distoOutputGain.gain.setTargetAtTime(outputAtten, audioCtx.currentTime, 0.05);
+      }
+
   }, [state.fx.distortion]);
 
   useEffect(() => {
@@ -810,7 +837,7 @@ const DraggableHandle = ({ cx, cy, onDrag }) => {
         <div
             onMouseDown={onMouseDown}
             onTouchStart={onTouchStart}
-            className="w-full h-full rounded-full bg-gray-800/50 backdrop-blur-[4px] cursor-grab active:cursor-grabbing shadow-lg border border-white/5"
+            className="w-full h-full rounded-full bg-gray-800/50 backdrop-blur-[4px] cursor-grab active:cursor-grabbing shadow-lg border border-white/10"
             style={{ touchAction: 'none' }}
         />
       </foreignObject>
@@ -1086,7 +1113,7 @@ const DelayPanel = ({ settings, onChange }) => {
 
 const DistortionPanel = ({ settings, onChange }) => {
   const models = ['fuzz', 'overdrive', 'crush'];
-  const fxColor = '#b91c1c';
+  const fxColor = '#ae2b27';
 
   return (
     <div className="flex flex-col justify-between h-auto md:h-full w-full">
@@ -1095,7 +1122,7 @@ const DistortionPanel = ({ settings, onChange }) => {
       </h3>
        <div className="flex-grow-0 md:flex-grow flex flex-row justify-center items-center gap-6 py-8 md:py-2 md:flex-col md:space-y-4 md:gap-0">
           <div className="w-[40%] md:w-[60%] shrink-0">
-            <Knob label="Depth" value={settings.depth} onChange={v => onChange('depth', v)} min={0} max={1} step={0.01} color="#b91c1c" dotColor="white" responsive />
+            <Knob label="Depth" value={settings.depth} onChange={v => onChange('depth', v)} min={0} max={1} step={0.01} color="#ae2b27" dotColor="white" responsive />
           </div>
       </div>
       <div className="space-y-2 p-2 border-t border-gray-800 mt-auto">

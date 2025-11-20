@@ -1,0 +1,5 @@
+{
+  "name": "C-QNC Synth - v3.1",
+  "description": "A web-based synthesizer and sequencer application that allows users to create music with multiple oscillators, ADSR envelopes, effects like reverb and delay, and a step sequencer.",
+  "requestFramePermissions": []
+}

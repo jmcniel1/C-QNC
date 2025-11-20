@@ -2,7 +2,6 @@ import React from 'react';
 import { Play, Pause, StopCircle } from 'lucide-react';
 import { Panel } from './ui/Panel';
 import { Knob } from './ui/Knob';
-import { Toggle } from './ui/Toggle';
 import { Oscilloscope } from './Oscilloscope';
 import { TransportState } from '../types';
 
@@ -15,6 +14,9 @@ interface TransportProps {
 }
 
 export const Transport: React.FC<TransportProps> = ({ settings, onChange, isScrolled, isMobile = false, analysers }) => {
+  // Increased knob sizes by approx 20%
+  const knobSize = isMobile ? 34 : (isScrolled ? 24 : 30);
+
   return (
     <Panel 
         title={null}
@@ -40,7 +42,7 @@ export const Transport: React.FC<TransportProps> = ({ settings, onChange, isScro
                 </button>
             </div>
         </div>
-        <div className={`flex justify-around items-center md:w-2/3 flex-grow px-2 py-1 md:py-0 border-b md:border-b-0 md:border-r-0 border-gray-800`}>
+        <div className={`flex justify-around items-center md:w-2/3 flex-grow px-4 py-1 md:py-0 gap-4`}>
           <Knob
             label="Bpm"
             value={settings.bpm}
@@ -50,7 +52,7 @@ export const Transport: React.FC<TransportProps> = ({ settings, onChange, isScro
             step={1}
             color="#333"
             dotColor="white"
-            size={isMobile ? 28 : (isScrolled ? 20 : 24)}
+            size={knobSize}
             layout="horizontal"
             precision={0}
             textSize="text-sm md:text-[10px]"
@@ -64,7 +66,7 @@ export const Transport: React.FC<TransportProps> = ({ settings, onChange, isScro
             step={0.01}
             color="#333"
             dotColor="white"
-            size={isMobile ? 28 : (isScrolled ? 20 : 24)}
+            size={knobSize}
             layout="horizontal"
             textSize="text-sm md:text-[10px]"
           />
@@ -77,14 +79,24 @@ export const Transport: React.FC<TransportProps> = ({ settings, onChange, isScro
             step={1}
             color="#333"
             dotColor="white"
-            size={isMobile ? 28 : (isScrolled ? 20 : 24)}
+            size={knobSize}
             layout="horizontal"
             precision={0}
             textSize="text-sm md:text-[10px]"
           />
-        </div>
-        <div className={`flex flex-col justify-around md:w-1/4 flex-grow px-4 py-1 text-base md:text-xs border-l border-gray-800`}>
-            <Toggle label="Metronome" checked={settings.metronomeOn} onChange={(v) => onChange('metronomeOn', v)} />
+          <button
+              onClick={() => onChange('metronomeOn', !settings.metronomeOn)}
+              className={`w-8 h-4 rounded-full p-0.5 transition-colors flex-shrink-0`}
+              style={{ backgroundColor: settings.metronomeOn ? '#f59e0b' : '#333333' }}
+              aria-label="Metronome Toggle"
+              title="Metronome"
+            >
+              <div
+                className={`w-3 h-3 bg-gray-200 rounded-full transition-transform ${
+                  settings.metronomeOn ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+          </button>
         </div>
       </div>
     </Panel>

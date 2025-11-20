@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useCallback } from 'react';
 
 interface KnobProps {
@@ -103,6 +104,13 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
       
   const labelClass = textSize || (layout === 'vertical' ? 'text-base md:text-xs' : 'text-base md:text-xs');
 
+  // Dynamic dot size calculation with 8px cap
+  const calculatedSize = Math.max(4, size * 0.2);
+  const finalSize = Math.min(8, calculatedSize);
+  
+  const dotSizeVal = responsive ? 'min(20%, 8px)' : `${finalSize}px`;
+  const dotTopVal = '15%';
+
   return (
     <div className={`flex select-none touch-none transition-opacity items-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${layout === 'vertical' ? 'flex-col justify-start space-y-1' : 'flex-row space-x-2'}`} 
       style={containerStyle}>
@@ -115,8 +123,13 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
       >
         <div className="w-full h-full" style={{ transform: `rotate(${percentage * 2.7 - 135}deg)` }}>
            <div 
-             className={`w-1.5 h-1.5 rounded-full absolute top-2 left-1/2 -translate-x-1/2`}
-             style={{ backgroundColor: dotColor }}
+             className={`rounded-full absolute left-1/2 -translate-x-1/2`}
+             style={{ 
+                 backgroundColor: dotColor,
+                 width: dotSizeVal,
+                 height: dotSizeVal,
+                 top: dotTopVal
+             }}
            ></div>
         </div>
       </div>

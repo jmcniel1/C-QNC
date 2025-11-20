@@ -918,7 +918,7 @@ const Synths = ({ oscillators, onOscChange, onADSRChange }) => {
 
 const ReverbPanel = ({ settings, onChange }) => {
   const models = ['hall', 'plate', 'room'];
-  const fxColor = '#ea580c';
+  const fxColor = '#4b5563';
 
   return (
     <div className="flex flex-col justify-between h-full w-full">
@@ -952,7 +952,7 @@ const ReverbPanel = ({ settings, onChange }) => {
 
 const DelayPanel = ({ settings, onChange }) => {
   const divisions = ['Free', '1/2', '1/2d', '1/4', '1/8', '1/8d', '1/16', '1/16d'];
-  const fxColor = '#ea580c';
+  const fxColor = '#f59e0b';
 
   return (
     <div className="flex flex-col justify-between h-full">
@@ -987,7 +987,7 @@ const DelayPanel = ({ settings, onChange }) => {
                 <button key={div}
                     onClick={() => onChange('division', div)}
                     className={`px-2 text-base md:text-sm transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
-                        settings.division !== div ? 'bg-fader-bg hover:bg-gray-700 text-white' : 'text-white'
+                        settings.division !== div ? 'bg-fader-bg hover:bg-gray-700 text-white' : 'text-black'
                     }`}
                     style={settings.division === div ? { backgroundColor: fxColor } : {}}
                 >

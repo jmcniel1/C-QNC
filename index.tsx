@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Play, Pause, StopCircle, Volume2, Waves, SlidersHorizontal, Bluetooth, SkipBack, SkipForward, ChevronLeft, ChevronRight, X, Keyboard, Download, Disc, Rotate3d, Aperture, Filter, VolumeX } from 'lucide-react';
@@ -456,7 +455,7 @@ const hexToRgba = (hex, alpha) => {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', size = 60, layout = 'vertical', precision = 2 }) => {
+const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', size = 60, layout = 'vertical', precision = 2, responsive = false }) => {
   const knobRef = useRef(null);
   const previousY = useRef(0);
   const valueRef = useRef(value);
@@ -529,15 +528,23 @@ const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmi
 
   const percentage = logarithmic ? log(min, max, value) * 100 : ((value - min) / (max - min)) * 100;
 
+  const containerStyle = responsive 
+      ? { width: '100%' } 
+      : (layout === 'vertical' ? { width: `${size}px` } : {});
+
+  const knobStyle = responsive
+      ? { backgroundColor: color, width: '100%', height: 'auto', aspectRatio: '1/1' }
+      : { backgroundColor: color, width: `${size}px`, height: `${size}px` };
+
   return (
     <div className={`flex select-none transition-opacity items-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${layout === 'vertical' ? 'flex-col justify-start space-y-1' : 'flex-row space-x-2'}`} 
-      style={layout === 'vertical' ? {width: `${size}px`} : {}}>
+      style={containerStyle}>
       <div
         ref={knobRef}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         className={`rounded-full flex-shrink-0 flex items-center justify-center relative ${disabled ? 'cursor-not-allowed' : 'cursor-ns-resize'}`}
-        style={{ backgroundColor: color, width: `${size}px`, height: `${size}px` }}
+        style={knobStyle}
       >
         <div className="w-full h-full" style={{ transform: `rotate(${percentage * 2.7 - 135}deg)` }}>
            <div 
@@ -919,15 +926,19 @@ const ReverbPanel = ({ settings, onChange }) => {
           <Rotate3d size={14} /> Reverb
       </h3>
       <div className="flex-grow flex flex-row md:flex-col justify-around items-center p-2 md:space-y-4">
-          <Knob label="Decay" value={settings.decay} onChange={v => onChange('decay', v)} min={0.1} max={6} step={0.1} color="#4b5563" dotColor="#f59e0b" size={80} precision={1} />
-          <Knob label="Predelay" value={settings.predelay} onChange={v => onChange('predelay', v)} min={0} max={1} step={0.01} color="#4b5563" dotColor="#f59e0b" size={80} />
+          <div className="w-[60%]">
+            <Knob label="Decay" value={settings.decay} onChange={v => onChange('decay', v)} min={0.1} max={6} step={0.1} color="#4b5563" dotColor="#f59e0b" responsive precision={1} />
+          </div>
+          <div className="w-[60%]">
+            <Knob label="Predelay" value={settings.predelay} onChange={v => onChange('predelay', v)} min={0} max={1} step={0.01} color="#4b5563" dotColor="#f59e0b" responsive />
+          </div>
       </div>
       <div className="flex justify-around gap-1 p-2 border-t border-gray-800">
         {models.map(model => (
             <button key={model}
                 onClick={() => onChange('model', model)}
                  className={`px-2 text-base md:text-sm transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
-                    settings.model !== model ? 'bg-fader-bg hover:bg-gray-700 text-gray-400' : 'text-white'
+                    settings.model !== model ? 'bg-fader-bg hover:bg-gray-700 text-white' : 'text-white'
                 }`}
                 style={settings.model === model ? { backgroundColor: fxColor } : {}}
             >
@@ -949,20 +960,24 @@ const DelayPanel = ({ settings, onChange }) => {
         <Aperture size={14} /> Delay
       </h3>
        <div className="flex-grow flex flex-col justify-around items-center p-2 space-y-4">
-          <Knob label="Feedback" value={settings.feedback} onChange={v => onChange('feedback', v)} min={0} max={1} step={0.01} color="#f59e0b" dotColor="black" size={80}/>
+          <div className="w-[60%]">
+            <Knob label="Feedback" value={settings.feedback} onChange={v => onChange('feedback', v)} min={0} max={1} step={0.01} color="#f59e0b" dotColor="black" responsive />
+          </div>
           {settings.division === 'Free' && (
-              <Knob 
-                label="Time" 
-                value={settings.time} 
-                onChange={v => onChange('time', v)} 
-                min={1} 
-                max={2000} 
-                step={1} 
-                color="#f59e0b" 
-                dotColor="black" 
-                size={80}
-                precision={0}
-              />
+              <div className="w-[60%]">
+                <Knob 
+                    label="Time" 
+                    value={settings.time} 
+                    onChange={v => onChange('time', v)} 
+                    min={1} 
+                    max={2000} 
+                    step={1} 
+                    color="#f59e0b" 
+                    dotColor="black" 
+                    responsive
+                    precision={0}
+                />
+              </div>
           )}
       </div>
       <div className="space-y-2 p-2 border-t border-gray-800">
@@ -971,9 +986,9 @@ const DelayPanel = ({ settings, onChange }) => {
                 <button key={div}
                     onClick={() => onChange('division', div)}
                     className={`px-2 text-base md:text-sm transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
-                        settings.division !== div ? 'bg-fader-bg hover:bg-gray-700 text-gray-400' : 'text-white'
+                        settings.division !== div ? 'bg-fader-bg hover:bg-gray-700 text-white' : 'text-white'
                     }`}
-                    style={settings.division !== div ? { backgroundColor: fxColor } : {}}
+                    style={settings.division === div ? { backgroundColor: fxColor } : {}}
                 >
                     {div}
                 </button>
@@ -1100,7 +1115,7 @@ const Sequencer = ({ steps, stepCount, currentStep, oscColors, onStepClick, onSt
     return (
       <Panel title="Sequencer" className="h-full flex flex-col" headerControls={clearButton}>
         <div className="overflow-auto h-full bg-[#121212]">
-          <div className={`flex flex-col gap-2 p-2 h-full justify-around ${!isMobile ? 'min-w-[800px]' : 'pb-20'}`}>
+          <div className={`flex flex-col gap-2 p-2 h-full justify-around ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
             {steps.map((track, trackIndex) => {
               if (isMobile) {
                 return (
@@ -1660,17 +1675,6 @@ const SynthView = () => {
             />
         )}
 
-        {isMobile && (
-            <button
-                onClick={() => setSequencerVisible(prev => !prev)}
-                className="sequencer-toggle-mobile fixed bottom-4 right-4 w-[70px] h-8 text-base z-[1003] flex items-center justify-center lg:hidden rounded-lg shadow-2xl transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
-                aria-controls="sequencer-panel"
-                aria-expanded={isSequencerVisible}
-            >
-                <span>Seq</span>
-            </button>
-        )}
-
         <footer id="sequencer-panel" className={`bg-panel-bg border-t border-gray-800 transition-transform duration-300 ease-in-out flex flex-col
             ${isMobile 
                 ? 'fixed bottom-0 left-0 right-0 w-full z-[1002] h-[90vh]' 
@@ -1681,6 +1685,16 @@ const SynthView = () => {
             `}
             onClick={(e) => e.stopPropagation()}
         >
+            {isMobile && (
+                <button
+                    onClick={() => setSequencerVisible(prev => !prev)}
+                    className="sequencer-toggle-mobile absolute -top-8 right-4 w-[70px] h-8 text-sm z-[1005] flex items-center justify-center lg:hidden rounded-t-lg shadow-lg"
+                    aria-controls="sequencer-panel"
+                    aria-expanded={isSequencerVisible}
+                >
+                    <span>Seq</span>
+                </button>
+            )}
             <Sequencer
             steps={synthState.sequencer.steps}
             stepCount={synthState.sequencer.stepCount}

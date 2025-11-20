@@ -951,7 +951,7 @@ const ReverbPanel = ({ settings, onChange }) => {
 };
 
 const DelayPanel = ({ settings, onChange }) => {
-  const divisions = ['Free', '1/4', '1/8', '1/8d', '1/16', '1/16d'];
+  const divisions = ['Free', '1/2', '1/2d', '1/4', '1/8', '1/8d', '1/16', '1/16d'];
   const fxColor = '#ea580c';
 
   return (
@@ -959,29 +959,30 @@ const DelayPanel = ({ settings, onChange }) => {
       <h3 className="text-gray-400 p-2 flex items-center gap-1 font-semibold">
         <Aperture size={14} /> Delay
       </h3>
-       <div className="flex-grow flex flex-col justify-around items-center p-2 space-y-4">
-          <div className="w-[60%]">
+       <div className="flex-grow flex flex-row md:flex-col justify-around items-center p-2 md:space-y-4 gap-2 md:gap-0">
+          <div className="w-[45%] md:w-[60%]">
             <Knob label="Feedback" value={settings.feedback} onChange={v => onChange('feedback', v)} min={0} max={1} step={0.01} color="#f59e0b" dotColor="black" responsive />
           </div>
-          {settings.division === 'Free' && (
-              <div className="w-[60%]">
-                <Knob 
-                    label="Time" 
-                    value={settings.time} 
-                    onChange={v => onChange('time', v)} 
-                    min={1} 
-                    max={2000} 
-                    step={1} 
-                    color="#f59e0b" 
-                    dotColor="black" 
-                    responsive
-                    precision={0}
-                />
-              </div>
-          )}
+          <div className="w-[45%] md:w-[60%]">
+            <Knob 
+                label="Time" 
+                value={settings.time} 
+                onChange={v => {
+                    onChange('time', v);
+                    if (settings.division !== 'Free') onChange('division', 'Free');
+                }}
+                min={1} 
+                max={2000} 
+                step={1} 
+                color="#f59e0b" 
+                dotColor="black" 
+                responsive
+                precision={0}
+            />
+          </div>
       </div>
       <div className="space-y-2 p-2 border-t border-gray-800">
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-4 gap-1">
             {divisions.map(div => (
                 <button key={div}
                     onClick={() => onChange('division', div)}
@@ -1511,6 +1512,8 @@ const SynthView = () => {
     const secondsPerBeat = 60 / bpm;
     let timeInSeconds = 0;
     switch (division) {
+        case '1/2': timeInSeconds = secondsPerBeat * 2; break;
+        case '1/2d': timeInSeconds = secondsPerBeat * 3; break;
         case '1/4': timeInSeconds = secondsPerBeat; break;
         case '1/8': timeInSeconds = secondsPerBeat / 2; break;
         case '1/8d': timeInSeconds = (secondsPerBeat / 2) * 1.5; break;

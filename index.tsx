@@ -596,7 +596,7 @@ const Transport = ({ settings, onChange, isScrolled, isMobile = false }) => {
   return (
     <Panel 
         title={null}
-        className={`h-auto md:h-24 sticky top-0 z-50 bg-panel-bg transition-all duration-300 ease-in-out ${isScrolled ? 'md:h-20' : ''}`}
+        className={`h-auto md:h-24 sticky top-0 z-50 bg-panel-bg transition-all duration-300 ease-in-out flex-none ${isScrolled ? 'md:h-20' : ''}`}
     >
       <div className="flex flex-col md:flex-row items-stretch justify-between h-full w-full">
         <div className="flex flex-grow md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800">
@@ -973,7 +973,7 @@ const DelayPanel = ({ settings, onChange }) => {
                     className={`px-2 text-base md:text-sm transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
                         settings.division !== div ? 'bg-fader-bg hover:bg-gray-700 text-gray-400' : 'text-white'
                     }`}
-                    style={settings.division === div ? { backgroundColor: fxColor } : {}}
+                    style={settings.division !== div ? { backgroundColor: fxColor } : {}}
                 >
                     {div}
                 </button>
@@ -1627,57 +1627,75 @@ const SynthView = () => {
           isScrolled={isScrolled}
           isMobile={isMobile}
       />
-      <div ref={mainContentRef} onScroll={handleScroll} className="flex-grow overflow-y-auto">
-        <main className={`flex-grow flex flex-col lg:flex-row`}>
-          <div className="flex flex-col w-full lg:w-2/3 xl:w-3/5 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-800">
-            <Synths
-              oscillators={synthState.oscillators}
-              onOscChange={handleOscChange}
-              onADSRChange={handleADSRChange}
+
+      <div className="flex-grow flex flex-col min-h-0 relative">
+        <div 
+            ref={mainContentRef} 
+            onScroll={handleScroll} 
+            className={`w-full flex flex-col
+                ${isMobile 
+                    ? 'flex-grow overflow-y-auto' 
+                    : 'lg:flex-none lg:h-auto lg:overflow-visible flex-grow overflow-y-auto' 
+                }
+            `}
+        >
+            <main className={`flex flex-col lg:flex-row h-full lg:h-auto`}>
+            <div className="flex flex-col w-full lg:w-2/3 xl:w-3/5 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-800">
+                <Synths
+                oscillators={synthState.oscillators}
+                onOscChange={handleOscChange}
+                onADSRChange={handleADSRChange}
+                />
+            </div>
+            <div className="flex-grow flex flex-col w-full lg:w-1/3 xl:w-2/5">
+                <FX settings={synthState.fx} onChange={handleFXChange} />
+            </div>
+            </main>
+        </div>
+
+        {isMobile && isSequencerVisible && (
+            <div
+            className="fixed inset-0 bg-black/50 z-[1001] lg:hidden"
+            onClick={() => setSequencerVisible(false)}
             />
-          </div>
-          <div className="flex-grow flex flex-col w-full lg:w-1/3 xl:w-2/5">
-              <FX settings={synthState.fx} onChange={handleFXChange} />
-          </div>
-        </main>
+        )}
+
+        {isMobile && (
+            <button
+                onClick={() => setSequencerVisible(prev => !prev)}
+                className="sequencer-toggle-mobile fixed bottom-4 right-4 w-[70px] h-8 text-base z-[1003] flex items-center justify-center lg:hidden rounded-lg shadow-2xl transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
+                aria-controls="sequencer-panel"
+                aria-expanded={isSequencerVisible}
+            >
+                <span>Seq</span>
+            </button>
+        )}
+
+        <footer id="sequencer-panel" className={`bg-panel-bg border-t border-gray-800 transition-transform duration-300 ease-in-out flex flex-col
+            ${isMobile 
+                ? 'fixed bottom-0 left-0 right-0 w-full z-[1002] h-[90vh]' 
+                : 'relative'
+            }
+            ${isMobile && !isSequencerVisible ? 'translate-y-full' : 'translate-y-0'}
+            ${!isMobile ? 'md:h-1/3 md:flex-shrink-0 lg:h-auto lg:flex-grow lg:flex-shrink lg:min-h-0' : ''} 
+            `}
+            onClick={(e) => e.stopPropagation()}
+        >
+            <Sequencer
+            steps={synthState.sequencer.steps}
+            stepCount={synthState.sequencer.stepCount}
+            currentStep={currentStep}
+            oscColors={oscColors}
+            onStepClick={(track, step, rect) => setEditingStep({track, step, rect})}
+            onDetailsClick={(track, step, rect) => setEditingStepDetails({track, step, rect})}
+            onStepToggle={handleStepToggle}
+            onContextMenu={handleContextMenu}
+            onClear={handleClearSequencer}
+            isMobile={isMobile}
+            />
+        </footer>
       </div>
 
-      {isMobile && isSequencerVisible && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[1001] lg:hidden"
-          onClick={() => setSequencerVisible(false)}
-        />
-      )}
-
-      {isMobile && (
-        <button
-            onClick={() => setSequencerVisible(prev => !prev)}
-            className="sequencer-toggle-mobile fixed bottom-4 right-4 w-[70px] h-8 text-base z-[1003] flex items-center justify-center lg:hidden rounded-lg shadow-2xl transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
-            aria-controls="sequencer-panel"
-            aria-expanded={isSequencerVisible}
-        >
-            <span>Seq</span>
-        </button>
-      )}
-
-      <footer id="sequencer-panel" className={`bg-panel-bg flex-shrink-0 border-t border-gray-800 transition-transform duration-300 ease-in-out h-[90vh] md:h-1/3 lg:h-[400px]
-        ${isMobile ? 'fixed bottom-0 left-0 right-0 w-full z-[1002]' : 'relative'}
-        ${isMobile && !isSequencerVisible ? 'translate-y-full' : 'translate-y-0'}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Sequencer
-          steps={synthState.sequencer.steps}
-          stepCount={synthState.sequencer.stepCount}
-          currentStep={currentStep}
-          oscColors={oscColors}
-          onStepClick={(track, step, rect) => setEditingStep({track, step, rect})}
-          onDetailsClick={(track, step, rect) => setEditingStepDetails({track, step, rect})}
-          onStepToggle={handleStepToggle}
-          onContextMenu={handleContextMenu}
-          onClear={handleClearSequencer}
-          isMobile={isMobile}
-        />
-      </footer>
       {editingStep && (
         <PianoRoll 
             activeNotes={activeNotesForPiano}

@@ -1,0 +1,104 @@
+export interface Note {
+  name: string;
+  velocity: number;
+  duration?: number;
+}
+
+export interface ADSRSettings {
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+}
+
+export interface FilterSettings {
+  freq: number;
+  res: number;
+}
+
+export interface SendsSettings {
+  delay: number;
+  reverb: number;
+  disto: number;
+}
+
+export interface OscillatorSettings {
+  id: number;
+  wave: 'sine' | 'square' | 'sawtooth' | 'triangle';
+  vol: number;
+  octave: number;
+  adsr: ADSRSettings;
+  sends: SendsSettings;
+  muted: boolean;
+  filter: FilterSettings;
+}
+
+export interface SequencerStep {
+  notes: Note[];
+  enabled: boolean;
+  probability?: number;
+}
+
+export interface SequencerTrack extends Array<SequencerStep> {}
+
+export interface SequencerState {
+  steps: SequencerTrack[];
+  stepCount: number;
+}
+
+export interface TransportState {
+  isPlaying: boolean;
+  bpm: number;
+  masterVolume: number;
+  metronomeOn: boolean;
+  swing: number;
+}
+
+export interface ReverbSettings {
+  decay: number;
+  predelay: number;
+  damper: number;
+  model: 'hall' | 'plate' | 'room';
+}
+
+export interface DelaySettings {
+  time: number;
+  feedback: number;
+  division: string;
+}
+
+export interface DistortionSettings {
+  depth: number;
+  model: 'fuzz' | 'overdrive' | 'crush';
+}
+
+export interface FXState {
+  reverb: ReverbSettings;
+  delay: DelaySettings;
+  distortion: DistortionSettings;
+}
+
+export interface SynthState {
+  transport: TransportState;
+  oscillators: OscillatorSettings[];
+  sequencer: SequencerState;
+  fx: FXState;
+}
+
+export interface FxNodes {
+  reverb?: ConvolverNode;
+  reverbWetGain?: GainNode;
+  delay?: DelayNode;
+  delayFeedback?: GainNode;
+  delayInputGain?: GainNode;
+  reverbInputGain?: GainNode;
+  distoInputGain?: GainNode;
+  distoShaper?: WaveShaperNode;
+  distoOutputGain?: GainNode;
+}
+
+export interface OscFxSendNodes {
+  delay: GainNode;
+  reverb: GainNode;
+  disto: GainNode;
+}

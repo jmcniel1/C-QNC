@@ -284,7 +284,8 @@ const useSynth = (state, onStepChange) => {
       const distoInputGain = context.createGain();
       const distoShaper = context.createWaveShaper();
       const distoOutputGain = context.createGain();
-      distoShaper.oversample = '4x'; // High quality oversampling
+      // Removing oversample to prevent phase cancellation latency when mixed in parallel
+      distoShaper.oversample = 'none'; 
 
       // 3. Reverb Chain
       const reverb = context.createConvolver();
@@ -481,7 +482,13 @@ const useSynth = (state, onStepChange) => {
       const now = audioCtxRef.current.currentTime;
       state.oscillators.forEach((osc, i) => {
           const gainValue = osc.muted ? 0 : osc.vol;
-          oscGainNodesRef.current[i]?.gain.setTargetAtTime(gainValue, now, 0.01);
+          
+          // Hard mute if volume is effectively 0 to prevent bleed
+          if (gainValue < 0.001) {
+               oscGainNodesRef.current[i]?.gain.setTargetAtTime(0, now, 0.01);
+          } else {
+               oscGainNodesRef.current[i]?.gain.setTargetAtTime(gainValue, now, 0.01);
+          }
           
           const sends = oscFxSendNodesRef.current[i];
           if (sends) {
@@ -528,15 +535,15 @@ const useSynth = (state, onStepChange) => {
       let outputAtten = 1.0;
 
       if (model === 'fuzz') {
-          // Fuzz needs high input drive to clip hard, and significant output cut to match volume
-          inputBoost = 2.0 + depth * 6.0; 
-          outputAtten = 0.3 / (1 + depth * 5.0); 
+          // Normalize Fuzz volume (Fuzz was too quiet previously due to over-attenuation)
+          inputBoost = 2.0 + depth * 10.0; 
+          outputAtten = 0.5 - (depth * 0.2); 
       } else if (model === 'overdrive') {
-          // Overdrive is softer, less extreme gain changes needed
-          inputBoost = 1.5 + depth * 3.0;
-          outputAtten = 0.7 / (1 + depth * 1.5);
+          // Overdrive: Soft clip, keep levels relatively consistent
+          inputBoost = 1.0 + depth * 5.0;
+          outputAtten = 0.8 - (depth * 0.2);
       } else if (model === 'crush') {
-          // Bitcrusher adds harmonics but not massive gain, slight boost
+          // Bitcrusher usually loses energy, so keep it high
           inputBoost = 1.0;
           outputAtten = 1.0;
       }
@@ -639,7 +646,7 @@ const Oscilloscope = ({ analysers }) => {
     return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-60" />;
 };
 
-const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', size = 60, layout = 'vertical', precision = 2, responsive = false, dragSensitivity = 1 }) => {
+const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', textSize = '', size = 60, layout = 'vertical', precision = 2, responsive = false, dragSensitivity = 1 }) => {
   const knobRef = useRef(null);
   const previousY = useRef(0);
   const valueRef = useRef(value);
@@ -719,6 +726,8 @@ const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmi
   const knobStyle = responsive
       ? { backgroundColor: color, width: '100%', height: 'auto', aspectRatio: '1/1' }
       : { backgroundColor: color, width: `${size}px`, height: `${size}px` };
+      
+  const labelClass = textSize || (layout === 'vertical' ? 'text-base md:text-xs' : 'text-base md:text-xs');
 
   return (
     <div className={`flex select-none touch-none transition-opacity items-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${layout === 'vertical' ? 'flex-col justify-start space-y-1' : 'flex-row space-x-2'}`} 
@@ -738,8 +747,8 @@ const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmi
         </div>
       </div>
       <div className={layout === 'horizontal' ? 'text-left' : 'text-center'}>
-        <label className={`text-base md:text-xs ${textColor || 'text-gray-400'}`}>{label}</label>
-        <span className={`block text-base md:text-sm ${textColor || 'text-gray-200'} font-medium`}>
+        <label className={`${labelClass} ${textColor || 'text-gray-400'} whitespace-nowrap`}>{label}</label>
+        <span className={`block ${labelClass} ${textColor || 'text-gray-200'} font-medium`}>
           {max === 1 ? `${(value * 100).toFixed(0)}%` : value.toFixed(logarithmic ? 0 : precision)}
         </span>
       </div>
@@ -767,15 +776,15 @@ const Panel = ({ title, children = null, className = '', headerControls = null }
 const Toggle = ({ label, checked, onChange, color = '#f59e0b' }) => {
     return (
       <label className="flex items-center justify-between w-full cursor-pointer">
-        <span className="text-gray-400 text-base md:text-xs mr-2">{label}</span>
+        <span className="text-gray-400 text-base md:text-[10px] mr-2">{label}</span>
         <button
           onClick={() => onChange(!checked)}
-          className={`w-10 h-5 rounded-full p-0.5 transition-colors`}
+          className={`w-8 h-4 rounded-full p-0.5 transition-colors`}
           style={{ backgroundColor: checked ? color : '#333333' }}
         >
           <div
-            className={`w-4 h-4 bg-gray-200 rounded-full transition-transform ${
-              checked ? 'translate-x-5' : 'translate-x-0'
+            className={`w-3 h-3 bg-gray-200 rounded-full transition-transform ${
+              checked ? 'translate-x-4' : 'translate-x-0'
             }`}
           />
         </button>
@@ -787,10 +796,10 @@ const Transport = ({ settings, onChange, isScrolled, isMobile = false, analysers
   return (
     <Panel 
         title={null}
-        className={`h-auto md:h-24 sticky top-0 z-50 bg-panel-bg transition-all duration-300 ease-in-out flex-none ${isScrolled ? 'md:h-20' : ''}`}
+        className={`h-auto md:h-14 sticky top-0 z-50 bg-panel-bg transition-all duration-300 ease-in-out flex-none ${isScrolled ? 'md:h-12' : ''}`}
     >
       <div className="flex flex-col md:flex-row items-stretch justify-between h-full w-full">
-        <div className="flex flex-grow md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 relative overflow-hidden min-h-[80px] md:min-h-0">
+        <div className="flex flex-grow md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 relative overflow-hidden min-h-[48px] md:min-h-0">
             <Oscilloscope analysers={analysers} />
             <div className="absolute inset-0 flex z-10">
                 <button 
@@ -798,18 +807,18 @@ const Transport = ({ settings, onChange, isScrolled, isMobile = false, analysers
                     className="flex-grow flex items-center justify-center transition-colors bg-transparent hover:bg-white/10"
                     aria-label={settings.isPlaying ? "Pause" : "Play"}
                 >
-                    {settings.isPlaying ? <Pause size={36} className="text-primary-accent" /> : <Play size={36} />}
+                    {settings.isPlaying ? <Pause size={20} className="text-primary-accent" /> : <Play size={20} />}
                 </button>
                  <button 
                     onClick={() => onChange('isPlaying', false)}
                     className="flex-grow flex items-center justify-center bg-transparent hover:bg-white/10 transition-colors"
                     aria-label="Stop"
                 >
-                    <StopCircle size={36} />
+                    <StopCircle size={20} />
                 </button>
             </div>
         </div>
-        <div className={`flex justify-around items-center md:w-2/3 flex-grow px-2 py-2 md:py-0 border-b md:border-b-0 md:border-r-0 border-gray-800`}>
+        <div className={`flex justify-around items-center md:w-2/3 flex-grow px-2 py-1 md:py-0 border-b md:border-b-0 md:border-r-0 border-gray-800`}>
           <Knob
             label="Bpm"
             value={settings.bpm}
@@ -819,9 +828,10 @@ const Transport = ({ settings, onChange, isScrolled, isMobile = false, analysers
             step={1}
             color="#333"
             dotColor="white"
-            size={isMobile ? 44 : (isScrolled ? 26 : 38)}
+            size={isMobile ? 28 : (isScrolled ? 20 : 24)}
             layout="horizontal"
             precision={0}
+            textSize="text-sm md:text-[10px]"
           />
           <Knob 
             label="Mains" 
@@ -832,8 +842,9 @@ const Transport = ({ settings, onChange, isScrolled, isMobile = false, analysers
             step={0.01}
             color="#333"
             dotColor="white"
-            size={isMobile ? 44 : (isScrolled ? 26 : 38)}
+            size={isMobile ? 28 : (isScrolled ? 20 : 24)}
             layout="horizontal"
+            textSize="text-sm md:text-[10px]"
           />
            <Knob 
             label="Swing" 
@@ -844,12 +855,13 @@ const Transport = ({ settings, onChange, isScrolled, isMobile = false, analysers
             step={1}
             color="#333"
             dotColor="white"
-            size={isMobile ? 44 : (isScrolled ? 26 : 38)}
+            size={isMobile ? 28 : (isScrolled ? 20 : 24)}
             layout="horizontal"
             precision={0}
+            textSize="text-sm md:text-[10px]"
           />
         </div>
-        <div className={`flex flex-col justify-around md:w-1/4 flex-grow px-4 py-2 text-base md:text-xs border-l border-gray-800`}>
+        <div className={`flex flex-col justify-around md:w-1/4 flex-grow px-4 py-1 text-base md:text-xs border-l border-gray-800`}>
             <Toggle label="Metronome" checked={settings.metronomeOn} onChange={(v) => onChange('metronomeOn', v)} />
         </div>
       </div>
@@ -1391,15 +1403,20 @@ const useMediaQuery = (query) => {
   };
 
 const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-const whiteKeyWidth = 16 * 1.2;
-const blackKeyWidth = 10 * 1.2;
-const pianoHeight = 80;
-const whiteKeyHeight = pianoHeight;
-const blackKeyHeight = 50;
 
 const PianoRoll = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobile }) => {
     const [octave, setOctave] = useState(3);
     
+    // Dynamic width calculation
+    const desktopKeyWidth = 32;
+    const mobileKeyWidth = typeof window !== 'undefined' ? window.innerWidth / 14 : 20;
+    
+    const wKeyWidth = isMobile ? mobileKeyWidth : desktopKeyWidth;
+    const bKeyWidth = wKeyWidth * 0.6;
+    const pHeight = isMobile ? 120 : 90; // Taller on mobile, slightly taller on desktop
+    const wKeyHeight = pHeight;
+    const bKeyHeight = pHeight * 0.6;
+
     const twoOctaveNotes = [
         ...notes.map(n => ({ note: n, octave: octave })),
         ...notes.map(n => ({ note: n, octave: octave + 1 }))
@@ -1408,20 +1425,21 @@ const PianoRoll = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobil
     const whiteKeys = twoOctaveNotes.filter(k => !k.note.includes('#'));
     const blackKeys = twoOctaveNotes.filter(k => k.note.includes('#'));
     
-    const pianoWidth = whiteKeys.length * whiteKeyWidth;
+    const pianoWidth = whiteKeys.length * wKeyWidth;
 
     const changeOctave = (delta) => { setOctave(prev => Math.max(0, Math.min(6, prev + delta))); }
 
-    let top, left, transform;
+    let top, left, transform, containerClass;
 
     if (isMobile) {
         top = '50%';
-        left = '50%';
-        transform = 'translate(-50%, -50%)';
+        left = '0';
+        transform = 'translate(0, -50%)';
+        containerClass = "absolute bg-panel-bg flex flex-col gap-2 shadow-2xl w-full py-4 border-y border-gray-700";
     } else {
         const windowWidth = window.innerWidth;
         const componentWidth = pianoWidth + 40;
-        const componentHeight = pianoHeight + 100;
+        const componentHeight = pHeight + 100;
     
         let topPos = rect.top - componentHeight;
         if (topPos < 10) { topPos = rect.bottom + 10; }
@@ -1431,6 +1449,7 @@ const PianoRoll = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobil
         if (leftPos + componentWidth > windowWidth - 10) { leftPos = windowWidth - componentWidth - 10; }
         top = `${topPos}px`;
         left = `${leftPos}px`;
+        containerClass = "absolute bg-panel-bg rounded-xl p-3 flex flex-col gap-2 shadow-2xl";
     }
 
     return (
@@ -1439,11 +1458,11 @@ const PianoRoll = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobil
             onMouseDown={onClose}
         >
             <div 
-                className="absolute bg-panel-bg rounded-xl p-3 flex flex-col gap-2 shadow-2xl"
+                className={containerClass}
                 style={{ top, left, transform }}
                 onMouseDown={(e) => e.stopPropagation()}
             >
-                <div className="flex justify-between items-center px-1 border-b border-gray-800 pb-2">
+                <div className={`flex justify-between items-center border-b border-gray-800 pb-2 ${isMobile ? 'px-4' : 'px-1'}`}>
                     <h3 className="text-base md:text-xs uppercase tracking-widest text-gray-400 font-semibold">C{octave} - B{octave+1}</h3>
                     <div className="flex items-center gap-2">
                         <button onClick={() => changeOctave(-1)} disabled={octave === 0} className="p-1 text-gray-400 hover:text-white disabled:opacity-30"><ChevronLeft size={16} /></button>
@@ -1453,7 +1472,7 @@ const PianoRoll = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobil
                      <button onClick={onClose} className="text-xl leading-none w-6 h-6 text-gray-500 hover:text-white rounded-full transition-colors">&times;</button>
                 </div>
                 
-                <div className="relative mx-auto" style={{ width: `${pianoWidth}px`, height: `${pianoHeight}px` }}>
+                <div className="relative mx-auto" style={{ width: `${pianoWidth}px`, height: `${pHeight}px` }}>
                     {/* Render White Keys */}
                     {whiteKeys.map((key, index) => {
                         const keyName = `${key.note}${key.octave}`;
@@ -1466,9 +1485,9 @@ const PianoRoll = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobil
                                     !isActive ? 'bg-gray-200 hover:bg-gray-300' : 'text-white'
                                 }`}
                                 style={{
-                                    left: `${index * whiteKeyWidth}px`,
-                                    width: `${whiteKeyWidth}px`,
-                                    height: `${whiteKeyHeight}px`,
+                                    left: `${index * wKeyWidth}px`,
+                                    width: `${wKeyWidth}px`,
+                                    height: `${wKeyHeight}px`,
                                     backgroundColor: isActive ? oscColor : undefined,
                                 }}
                             >
@@ -1482,8 +1501,8 @@ const PianoRoll = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobil
                         const isActive = activeNotes.some(n => n.name === keyName);
                         
                         const whiteKeysInOctaveBefore = notes.slice(0, notes.indexOf(key.note)).filter(n => !n.includes('#')).length;
-                        const octaveOffset = (key.octave - octave) * 7 * whiteKeyWidth;
-                        const noteOffset = whiteKeysInOctaveBefore * whiteKeyWidth - (blackKeyWidth / 2);
+                        const octaveOffset = (key.octave - octave) * 7 * wKeyWidth;
+                        const noteOffset = whiteKeysInOctaveBefore * wKeyWidth - (bKeyWidth / 2);
 
                         return (
                             <button
@@ -1493,8 +1512,8 @@ const PianoRoll = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobil
                                     ${!isActive ? 'bg-black hover:bg-gray-800' : ''}`}
                                 style={{
                                     left: `${octaveOffset + noteOffset}px`,
-                                    width: `${blackKeyWidth}px`,
-                                    height: `${blackKeyHeight}px`,
+                                    width: `${bKeyWidth}px`,
+                                    height: `${bKeyHeight}px`,
                                     backgroundColor: isActive ? oscColor : undefined,
                                     opacity: isActive ? 0.9 : 1.0,
                                 }}

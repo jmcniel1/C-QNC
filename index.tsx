@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useId } from 'react';
 import ReactDOM from 'react-dom/client';
-import { Play, Pause, StopCircle, Volume2, Waves, SlidersHorizontal, Bluetooth, SkipBack, SkipForward, ChevronLeft, ChevronRight, X, Keyboard, Download, Disc, Rotate3d, Aperture, Filter, VolumeX } from 'lucide-react';
+import { Play, Pause, StopCircle, Volume2, Waves, SlidersHorizontal, Bluetooth, SkipBack, SkipForward, ChevronLeft, ChevronRight, X, Keyboard, Download, Disc, Rotate3d, Aperture, Filter, VolumeX, Zap } from 'lucide-react';
 
 // --- GLOBAL STYLES & TAILWIND CONFIG ---
 const GlobalStyles = () => {
@@ -103,9 +103,9 @@ const oscColors = ['#1d4ed8', '#166534', '#b91c1c'];
 
 const initialADSR = { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.3 };
 const initialOsc = [
-  { id: 1, wave: 'sine', vol: 0.2, octave: 0, adsr: { ...initialADSR }, sends: { delay: 0, reverb: 0 }, muted: false, filter: { freq: 20000, res: 0.1 } },
-  { id: 2, wave: 'square', vol: 0.2, octave: 0, adsr: { ...initialADSR, attack: 0.02, decay: 0.5 }, sends: { delay: 0, reverb: 0 }, muted: false, filter: { freq: 20000, res: 0.1 } },
-  { id: 3, wave: 'sawtooth', vol: 0.2, octave: 0, adsr: { ...initialADSR, release: 1.0 }, sends: { delay: 0, reverb: 0 }, muted: false, filter: { freq: 20000, res: 0.1 } },
+  { id: 1, wave: 'sine', vol: 0.2, octave: 0, adsr: { ...initialADSR }, sends: { delay: 0, reverb: 0, disto: 0 }, muted: false, filter: { freq: 20000, res: 0.1 } },
+  { id: 2, wave: 'square', vol: 0.2, octave: 0, adsr: { ...initialADSR, attack: 0.02, decay: 0.5 }, sends: { delay: 0, reverb: 0, disto: 0 }, muted: false, filter: { freq: 20000, res: 0.1 } },
+  { id: 3, wave: 'sawtooth', vol: 0.2, octave: 0, adsr: { ...initialADSR, release: 1.0 }, sends: { delay: 0, reverb: 0, disto: 0 }, muted: false, filter: { freq: 20000, res: 0.1 } },
 ];
 const initialSequencer = {
   steps: Array(3).fill(0).map(() => Array(16).fill({ notes: [], enabled: true, probability: 1.0 })),
@@ -115,6 +115,7 @@ const initialTransport = { isPlaying: false, bpm: 120, masterVolume: 0.8, metron
 const initialFX = {
   reverb: { decay: 2.5, predelay: 0.1, damper: 8000, model: 'hall' },
   delay: { time: 250, feedback: 0, division: '1/4' },
+  distortion: { depth: 0, model: 'overdrive' },
 };
 
 // --- AUDIO LOGIC (useSynth hook) ---
@@ -188,6 +189,45 @@ async function generateImpulseResponse(audioCtx, model, duration, decay) {
     return impulse;
 }
 
+// WaveShaper Curve Generator - Improved High Resolution Models
+function makeDistortionCurve(amount, model) {
+  const n_samples = 44100;
+  const curve = new Float32Array(n_samples);
+  
+  for (let i = 0; i < n_samples; ++i) {
+    // x is in [-1, 1]
+    const x = i * 2 / n_samples - 1;
+    
+    if (model === 'overdrive') {
+        // High-Res Soft Clipping (Saturation)
+        // Simulates analog tape/tube saturation using a hyperbolic tangent function
+        // k controls the drive amount.
+        const k = 1 + amount * 20;
+        // Normalize the output so at low drive it's unity gain, at high drive it saturates
+        curve[i] = Math.tanh(k * x) / Math.tanh(k);
+        
+    } else if (model === 'fuzz') {
+        // High-Res Hard Clipping (Fuzz)
+        // Uses ArcTangent to create aggressive, squared-off edges typical of fuzz pedals
+        // The higher the amount, the more it approaches a square wave
+        const k = 1 + amount * 50;
+        curve[i] = (2 / Math.PI) * Math.atan(k * x);
+
+    } else if (model === 'crush') {
+        // Bit-Depth Reduction (Quantization)
+        // Quantizes the signal to a lower bit depth (16 bit down to 1 bit)
+        // Clean mathematical quantization
+        const bits = 16 - (amount * 15); 
+        const steps = Math.pow(2, bits);
+        curve[i] = Math.round(x * steps) / steps;
+    } else {
+        // Default linear
+        curve[i] = x;
+    }
+  }
+  return curve;
+}
+
 interface FxNodes {
   reverb?: ConvolverNode;
   reverbWetGain?: GainNode;
@@ -195,10 +235,14 @@ interface FxNodes {
   delayFeedback?: GainNode;
   delayInputGain?: GainNode;
   reverbInputGain?: GainNode;
+  distoInputGain?: GainNode;
+  distoShaper?: WaveShaperNode;
+  distoOutputGain?: GainNode;
 }
 interface OscFxSendNodes {
   delay: GainNode;
   reverb: GainNode;
+  disto: GainNode;
 }
 
 const useSynth = (state, onStepChange) => {
@@ -230,32 +274,49 @@ const useSynth = (state, onStepChange) => {
       metronomeGainRef.current.gain.value = 0.5;
       metronomeGainRef.current.connect(masterGainRef.current);
 
-      // Create FX nodes
-      const reverb = context.createConvolver();
-      reverb.buffer = await generateImpulseResponse(context, state.fx.reverb.model, state.fx.reverb.decay, 3);
-      const reverbWetGain = context.createGain();
-      reverbWetGain.gain.value = 1.0; // Reverb wet level is controlled by sends now
+      // --- CREATE FX NODES ---
+      
+      // 1. Delay Chain
       const delay = context.createDelay(5);
       const delayFeedback = context.createGain();
       const delayInputGain = context.createGain();
+
+      // 2. Distortion Chain
+      const distoInputGain = context.createGain();
+      const distoShaper = context.createWaveShaper();
+      const distoOutputGain = context.createGain();
+      distoShaper.oversample = '4x'; // High quality oversampling
+
+      // 3. Reverb Chain
+      const reverb = context.createConvolver();
+      reverb.buffer = await generateImpulseResponse(context, state.fx.reverb.model, state.fx.reverb.decay, 3);
+      const reverbWetGain = context.createGain();
       const reverbInputGain = context.createGain();
+      reverbWetGain.gain.value = 1.0; 
 
-      // Configure FX nodes
+      // --- CONFIGURE & CONNECT FX ---
+
+      // Delay Config
       delayFeedback.gain.value = state.fx.delay.feedback;
-
-      // Connect FX chains in PARALLEL
-      // Delay Chain
       delayInputGain.connect(delay);
       delay.connect(delayFeedback);
       delayFeedback.connect(delay);
       delay.connect(masterGainRef.current);
 
-      // Reverb Chain
+      // Distortion Config
+      distoInputGain.connect(distoShaper);
+      distoShaper.connect(distoOutputGain);
+      distoOutputGain.connect(masterGainRef.current);
+
+      // Reverb Config
       reverbInputGain.connect(reverbWetGain);
       reverbWetGain.connect(reverb);
       reverb.connect(masterGainRef.current);
 
-      fxNodesRef.current = { reverb, reverbWetGain, delay, delayFeedback, delayInputGain, reverbInputGain };
+      fxNodesRef.current = { 
+          reverb, reverbWetGain, delay, delayFeedback, delayInputGain, reverbInputGain,
+          distoInputGain, distoShaper, distoOutputGain
+      };
 
       const oscGains = state.oscillators.map(() => context.createGain());
       oscGainNodesRef.current = oscGains;
@@ -271,23 +332,27 @@ const useSynth = (state, onStepChange) => {
         oscFilter.frequency.value = oscSettings.filter.freq;
         oscFilter.Q.value = Math.pow(oscSettings.filter.res, 3) * 20 + 0.1;
 
-        // Create 2 send nodes per OSC
+        // Create sends per OSC
         const delaySend = context.createGain();
+        const distoSend = context.createGain();
         const reverbSend = context.createGain();
         
         delaySend.gain.value = oscSettings.sends.delay;
+        distoSend.gain.value = oscSettings.sends.disto;
         reverbSend.gain.value = oscSettings.sends.reverb;
 
         // Connect sends to FX chain inputs
         delaySend.connect(delayInputGain);
+        distoSend.connect(distoInputGain);
         reverbSend.connect(reverbInputGain);
 
-        oscFxSendNodesRef.current.push({ delay: delaySend, reverb: reverbSend });
+        oscFxSendNodesRef.current.push({ delay: delaySend, reverb: reverbSend, disto: distoSend });
         
         // Routing: Voice -> Gain -> Filter -> (Master + Sends)
         oscGain.connect(oscFilter);
         oscFilter.connect(masterGainRef.current!); // Dry signal
-        oscFilter.connect(delaySend); // Wet signals
+        oscFilter.connect(delaySend); 
+        oscFilter.connect(distoSend);
         oscFilter.connect(reverbSend);
 
         for (let i = 0; i < MAX_VOICES_PER_OSC; i++) {
@@ -411,6 +476,7 @@ const useSynth = (state, onStepChange) => {
           const sends = oscFxSendNodesRef.current[i];
           if (sends) {
             sends.delay.gain.setTargetAtTime(osc.sends.delay, now, 0.02);
+            sends.disto.gain.setTargetAtTime(osc.sends.disto, now, 0.02);
             sends.reverb.gain.setTargetAtTime(osc.sends.reverb, now, 0.02);
           }
 
@@ -428,16 +494,21 @@ const useSynth = (state, onStepChange) => {
     const reverbNode = fxNodesRef.current.reverb;
     if (!audioCtx || !reverbNode) return;
     const { model, decay } = state.fx.reverb;
-    // Debounce this expensive operation
     const timeoutId = setTimeout(() => {
         generateImpulseResponse(audioCtx, model, decay, 3).then(impulse => {
             if(reverbNode) reverbNode.buffer = impulse;
         });
     }, 50);
-
     return () => clearTimeout(timeoutId);
   }, [state.fx.reverb.model, state.fx.reverb.decay]);
 
+  // Distortion Effect Update
+  useEffect(() => {
+      const { distoShaper } = fxNodesRef.current;
+      if (!distoShaper) return;
+      const { depth, model } = state.fx.distortion;
+      distoShaper.curve = makeDistortionCurve(depth, model);
+  }, [state.fx.distortion]);
 
   useEffect(() => {
     if (!audioCtxRef.current) return;
@@ -464,7 +535,7 @@ const hexToRgba = (hex, alpha) => {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', size = 60, layout = 'vertical', precision = 2, responsive = false }) => {
+const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', size = 60, layout = 'vertical', precision = 2, responsive = false, dragSensitivity = 1 }) => {
   const knobRef = useRef(null);
   const previousY = useRef(0);
   const valueRef = useRef(value);
@@ -481,7 +552,7 @@ const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmi
   const handleDrag = useCallback((clientY, shiftKey) => {
     const deltaY = previousY.current - clientY;
     let newValue;
-    const sensitivity = shiftKey ? 0.1 : 1;
+    const sensitivity = shiftKey ? 0.1 : dragSensitivity;
     const currentValue = valueRef.current;
 
     if (logarithmic) {
@@ -503,7 +574,7 @@ const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmi
         onChange(finalValue);
     }
     previousY.current = clientY;
-  }, [onChange, min, max, step, logarithmic]);
+  }, [onChange, min, max, step, logarithmic, dragSensitivity]);
 
   const handleMouseMove = useCallback((e) => handleDrag(e.clientY, e.shiftKey), [handleDrag]);
   const handleTouchMove = useCallback((e) => {
@@ -735,23 +806,20 @@ const DraggableHandle = ({ cx, cy, onDrag }) => {
     };
   
     return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={8}
-        fill="#e0e0e0"
-        stroke="#1c1c1c"
-        strokeWidth={2}
-        className="cursor-grab active:cursor-grabbing shadow-lg"
-        style={{ touchAction: 'none' }}
-        onMouseDown={onMouseDown}
-        onTouchStart={onTouchStart}
-      />
+      <foreignObject x={cx - 9} y={cy - 9} width={18} height={18} className="overflow-visible">
+        <div
+            onMouseDown={onMouseDown}
+            onTouchStart={onTouchStart}
+            className="w-full h-full rounded-full bg-gray-800/50 backdrop-blur-[4px] cursor-grab active:cursor-grabbing shadow-lg border border-white/5"
+            style={{ touchAction: 'none' }}
+        />
+      </foreignObject>
     );
-  };
+};
 
 const ADSR = ({ settings, onChange, color = '#f59e0b' }) => {
   const settingsRef = useRef(settings);
+  const gradientId = useId();
   useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   const { attack, decay, sustain, release } = settings;
@@ -792,12 +860,17 @@ const ADSR = ({ settings, onChange, color = '#f59e0b' }) => {
 
   return (
     <div className="flex flex-col justify-center items-center h-full w-full p-2">
-      <svg viewBox={`-10 -10 ${width + 20} ${height + 20}`} width="100%" height="100%" className="flex-grow">
+      <svg viewBox={`-10 -10 ${width + 20} ${height + 20}`} width="100%" height="100%" className="flex-grow overflow-visible">
+        <defs>
+            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity="0.7" />
+                <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+        </defs>
         <path
-          d={`M 0,${height} L ${ax},${ay} L ${dx},${dy} L ${sx},${sy} L ${rx},${ry}`}
-          stroke={color}
-          strokeWidth={2}
-          fill={hexToRgba(color, 0.2)}
+          d={`M 0,${height} L ${ax},${ay} L ${dx},${dy} L ${sx},${sy} L ${rx},${ry} Z`}
+          stroke="none"
+          fill={`url(#${gradientId})`}
         />
         <DraggableHandle cx={ax} cy={ay} onDrag={(dx) => handleDrag('attack', dx, 0)} />
         <DraggableHandle cx={dx} cy={dy} onDrag={(dx, dy) => { handleDrag('decay', dx, 0); handleDrag('sustain', 0, dy);}} />
@@ -847,7 +920,7 @@ const OscillatorPanel = ({ settings, onOscChange, onADSRChange, color }) => {
             color="#444"
             dotColor="white"
           />
-          <Knob label="Octave" value={settings.octave} onChange={v => onOscChange('octave', v)} min={-4} max={4} step={1} color="#444" dotColor="white" precision={0} />
+          <Knob label="Octave" value={settings.octave} onChange={v => onOscChange('octave', v)} min={-4} max={4} step={1} color="#444" dotColor="white" precision={0} dragSensitivity={0.05} />
           <div className="flex flex-col space-y-1 items-center text-center" style={{ width: '60px' }}>
             <button 
               onClick={() => onOscChange('muted', !settings.muted)} 
@@ -866,9 +939,10 @@ const OscillatorPanel = ({ settings, onOscChange, onADSRChange, color }) => {
       <div className="flex flex-col space-y-2 py-2 px-1 border-b border-gray-800">
         <h4 className="text-center text-gray-500 text-xs uppercase font-semibold tracking-wider">FX Sends</h4>
         <div className="flex justify-around items-center text-sm">
-            <Knob label="Delay" value={settings.sends.delay} onChange={v => onOscChange('sends', {...settings.sends, delay: v})} min={0} max={1} step={0.01} color="#444" dotColor="white" size={50} />
-            <Knob label="Reverb" value={settings.sends.reverb} onChange={v => onOscChange('sends', {...settings.sends, reverb: v})} min={0} max={1} step={0.01} color="#444" dotColor="white" size={50} />
-            <div className="flex flex-col space-y-1" style={{width: 120}}>
+            <Knob label="Delay" value={settings.sends.delay} onChange={v => onOscChange('sends', {...settings.sends, delay: v})} min={0} max={1} step={0.01} color="#444" dotColor="white" size={40} />
+            <Knob label="Disto" value={settings.sends.disto} onChange={v => onOscChange('sends', {...settings.sends, disto: v})} min={0} max={1} step={0.01} color="#444" dotColor="white" size={40} />
+            <Knob label="Reverb" value={settings.sends.reverb} onChange={v => onOscChange('sends', {...settings.sends, reverb: v})} min={0} max={1} step={0.01} color="#444" dotColor="white" size={40} />
+            <div className="flex flex-col space-y-1" style={{width: 100}}>
               <Knob 
                 label="Freq"
                 value={settings.filter.freq}
@@ -1009,15 +1083,54 @@ const DelayPanel = ({ settings, onChange }) => {
     </div>
   );
 };
+
+const DistortionPanel = ({ settings, onChange }) => {
+  const models = ['fuzz', 'overdrive', 'crush'];
+  const fxColor = '#b91c1c';
+
+  return (
+    <div className="flex flex-col justify-between h-auto md:h-full w-full">
+      <h3 className="text-gray-400 p-2 flex items-center gap-1 font-semibold">
+        <Zap size={14} /> Distortion
+      </h3>
+       <div className="flex-grow-0 md:flex-grow flex flex-row justify-center items-center gap-6 py-8 md:py-2 md:flex-col md:space-y-4 md:gap-0">
+          <div className="w-[40%] md:w-[60%] shrink-0">
+            <Knob label="Depth" value={settings.depth} onChange={v => onChange('depth', v)} min={0} max={1} step={0.01} color="#b91c1c" dotColor="white" responsive />
+          </div>
+      </div>
+      <div className="space-y-2 p-2 border-t border-gray-800 mt-auto">
+        <div className="flex justify-around gap-1">
+            {models.map(model => (
+                <button key={model}
+                    onClick={() => onChange('model', model)}
+                    className={`px-2 text-base md:text-sm transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
+                        settings.model !== model ? 'bg-fader-bg hover:bg-gray-700 text-white' : 'text-white'
+                    }`}
+                    style={settings.model === model ? { backgroundColor: fxColor } : {}}
+                >
+                    {model.charAt(0).toUpperCase() + model.slice(1)}
+                </button>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+};
   
 const FX = ({ settings, onChange }) => {
     return (
         <Panel title="FX" className="flex-grow">
-            <div className="h-auto md:h-full grid grid-cols-1 md:grid-cols-2">
+            <div className="h-auto md:h-full grid grid-cols-1 md:grid-cols-3">
                 <div className="border-b md:border-b-0 md:border-r border-gray-800">
                     <DelayPanel 
                         settings={settings.delay}
                         onChange={(k, v) => onChange('delay', k, v)}
+                    />
+                </div>
+                <div className="border-b md:border-b-0 md:border-r border-gray-800">
+                    <DistortionPanel 
+                        settings={settings.distortion} 
+                        onChange={(k, v) => onChange('distortion', k, v)}
                     />
                 </div>
                 <div className="border-b md:border-b-0 md:border-r border-gray-800">

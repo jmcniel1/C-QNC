@@ -69,16 +69,25 @@ const GlobalStyles = () => {
             -webkit-backdrop-filter: blur(4px);
           }
 
-          body {
+          html, body {
             overscroll-behavior: none;
             font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            min-height: 100vh;
-            height: 100vh;
-            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Lock viewport overflow */
+            position: fixed; /* Prevent body scroll/rubber-banding on iOS */
             background-color: #121212;
+            user-select: none; /* Disable text selection globally */
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: none; /* Disable browser zooming and panning globally */
           }
           #root {
             height: 100%;
+            width: 100%;
+            overflow: hidden;
           }
         `}
         </style>
@@ -537,7 +546,7 @@ const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmi
       : { backgroundColor: color, width: `${size}px`, height: `${size}px` };
 
   return (
-    <div className={`flex select-none transition-opacity items-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${layout === 'vertical' ? 'flex-col justify-start space-y-1' : 'flex-row space-x-2'}`} 
+    <div className={`flex select-none touch-none transition-opacity items-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${layout === 'vertical' ? 'flex-col justify-start space-y-1' : 'flex-row space-x-2'}`} 
       style={containerStyle}>
       <div
         ref={knobRef}
@@ -734,6 +743,7 @@ const DraggableHandle = ({ cx, cy, onDrag }) => {
         stroke="#1c1c1c"
         strokeWidth={2}
         className="cursor-grab active:cursor-grabbing shadow-lg"
+        style={{ touchAction: 'none' }}
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
       />
@@ -925,11 +935,11 @@ const ReverbPanel = ({ settings, onChange }) => {
       <h3 className="text-gray-400 p-2 flex items-center gap-1 font-semibold">
           <Rotate3d size={14} /> Reverb
       </h3>
-      <div className="flex-grow flex flex-row md:flex-col justify-around items-center p-2 md:space-y-4">
-          <div className="w-[60%]">
+      <div className="flex-grow flex flex-row md:flex-col justify-around items-start md:items-center p-2 pt-6 md:pt-2 md:space-y-4 gap-2 md:gap-0">
+          <div className="w-[45%] md:w-[60%]">
             <Knob label="Decay" value={settings.decay} onChange={v => onChange('decay', v)} min={0.1} max={6} step={0.1} color="#4b5563" dotColor="#f59e0b" responsive precision={1} />
           </div>
-          <div className="w-[60%]">
+          <div className="w-[45%] md:w-[60%]">
             <Knob label="Predelay" value={settings.predelay} onChange={v => onChange('predelay', v)} min={0} max={1} step={0.01} color="#4b5563" dotColor="#f59e0b" responsive />
           </div>
       </div>
@@ -959,7 +969,7 @@ const DelayPanel = ({ settings, onChange }) => {
       <h3 className="text-gray-400 p-2 flex items-center gap-1 font-semibold">
         <Aperture size={14} /> Delay
       </h3>
-       <div className="flex-grow flex flex-row md:flex-col justify-around items-center p-2 md:space-y-4 gap-2 md:gap-0">
+       <div className="flex-grow flex flex-row md:flex-col justify-around items-start md:items-center p-2 pt-6 md:pt-2 md:space-y-4 gap-2 md:gap-0">
           <div className="w-[45%] md:w-[60%]">
             <Knob label="Feedback" value={settings.feedback} onChange={v => onChange('feedback', v)} min={0} max={1} step={0.01} color="#f59e0b" dotColor="black" responsive />
           </div>
@@ -1373,7 +1383,7 @@ const VerticalSlider = ({ label, value, onChange, min = 0, max = 1, step = 0.01,
     const percentage = ((value - min) / (max - min)) * 100;
   
     return (
-      <div className="flex flex-col items-center gap-2 select-none">
+      <div className="flex flex-col items-center gap-2 select-none touch-none">
         <div
           ref={sliderRef}
           className="w-6 h-32 bg-fader-bg rounded-full cursor-pointer relative overflow-hidden"
@@ -1650,7 +1660,7 @@ const SynthView = () => {
         <div 
             ref={mainContentRef} 
             onScroll={handleScroll} 
-            className={`w-full flex flex-col
+            className={`w-full flex flex-col touch-pan-y
                 ${isMobile 
                     ? 'flex-grow overflow-y-auto' 
                     : 'lg:flex-none lg:h-auto lg:overflow-visible flex-grow overflow-y-auto' 
@@ -1757,7 +1767,7 @@ const App = () => {
     return (
       <React.Fragment>
         <GlobalStyles />
-        <div className="min-h-screen w-screen bg-synth-bg flex flex-col font-sans text-gray-300 antialiased text-base">
+        <div className="min-h-screen w-full bg-synth-bg flex flex-col font-sans text-gray-300 antialiased text-base">
             <SynthView />
         </div>
       </React.Fragment>

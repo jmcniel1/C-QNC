@@ -931,19 +931,19 @@ const ReverbPanel = ({ settings, onChange }) => {
   const fxColor = '#4b5563';
 
   return (
-    <div className="flex flex-col justify-between h-full w-full">
+    <div className="flex flex-col justify-between h-auto md:h-full w-full">
       <h3 className="text-gray-400 p-2 flex items-center gap-1 font-semibold">
           <Rotate3d size={14} /> Reverb
       </h3>
-      <div className="flex-grow flex flex-row md:flex-col justify-around items-start md:items-center p-2 pt-6 md:pt-2 md:space-y-4 gap-2 md:gap-0">
-          <div className="w-[45%] md:w-[60%]">
+      <div className="flex-grow-0 md:flex-grow flex flex-row justify-center items-center gap-6 py-8 md:py-2 md:flex-col md:space-y-4 md:gap-0">
+          <div className="w-[40%] md:w-[60%] shrink-0">
             <Knob label="Decay" value={settings.decay} onChange={v => onChange('decay', v)} min={0.1} max={6} step={0.1} color="#4b5563" dotColor="#f59e0b" responsive precision={1} />
           </div>
-          <div className="w-[45%] md:w-[60%]">
+          <div className="w-[40%] md:w-[60%] shrink-0">
             <Knob label="Predelay" value={settings.predelay} onChange={v => onChange('predelay', v)} min={0} max={1} step={0.01} color="#4b5563" dotColor="#f59e0b" responsive />
           </div>
       </div>
-      <div className="flex justify-around gap-1 p-2 border-t border-gray-800">
+      <div className="flex justify-around gap-1 p-2 border-t border-gray-800 mt-auto">
         {models.map(model => (
             <button key={model}
                 onClick={() => onChange('model', model)}
@@ -965,15 +965,15 @@ const DelayPanel = ({ settings, onChange }) => {
   const fxColor = '#f59e0b';
 
   return (
-    <div className="flex flex-col justify-between h-full">
+    <div className="flex flex-col justify-between h-auto md:h-full w-full">
       <h3 className="text-gray-400 p-2 flex items-center gap-1 font-semibold">
         <Aperture size={14} /> Delay
       </h3>
-       <div className="flex-grow flex flex-row md:flex-col justify-around items-start md:items-center p-2 pt-6 md:pt-2 md:space-y-4 gap-2 md:gap-0">
-          <div className="w-[45%] md:w-[60%]">
+       <div className="flex-grow-0 md:flex-grow flex flex-row justify-center items-center gap-6 py-8 md:py-2 md:flex-col md:space-y-4 md:gap-0">
+          <div className="w-[40%] md:w-[60%] shrink-0">
             <Knob label="Feedback" value={settings.feedback} onChange={v => onChange('feedback', v)} min={0} max={1} step={0.01} color="#f59e0b" dotColor="black" responsive />
           </div>
-          <div className="w-[45%] md:w-[60%]">
+          <div className="w-[40%] md:w-[60%] shrink-0">
             <Knob 
                 label="Time" 
                 value={settings.time} 
@@ -991,7 +991,7 @@ const DelayPanel = ({ settings, onChange }) => {
             />
           </div>
       </div>
-      <div className="space-y-2 p-2 border-t border-gray-800">
+      <div className="space-y-2 p-2 border-t border-gray-800 mt-auto">
         <div className="grid grid-cols-4 gap-1">
             {divisions.map(div => (
                 <button key={div}
@@ -1013,7 +1013,7 @@ const DelayPanel = ({ settings, onChange }) => {
 const FX = ({ settings, onChange }) => {
     return (
         <Panel title="FX" className="flex-grow">
-            <div className="h-full grid grid-cols-1 md:grid-cols-2">
+            <div className="h-auto md:h-full grid grid-cols-1 md:grid-cols-2">
                 <div className="border-b md:border-b-0 md:border-r border-gray-800">
                     <DelayPanel 
                         settings={settings.delay}

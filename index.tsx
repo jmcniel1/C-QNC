@@ -790,7 +790,7 @@ const Transport = ({ settings, onChange, isScrolled, isMobile = false, analysers
         className={`h-auto md:h-24 sticky top-0 z-50 bg-panel-bg transition-all duration-300 ease-in-out flex-none ${isScrolled ? 'md:h-20' : ''}`}
     >
       <div className="flex flex-col md:flex-row items-stretch justify-between h-full w-full">
-        <div className="flex flex-grow md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 relative overflow-hidden">
+        <div className="flex flex-grow md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 relative overflow-hidden min-h-[80px] md:min-h-0">
             <Oscilloscope analysers={analysers} />
             <div className="absolute inset-0 flex z-10">
                 <button 

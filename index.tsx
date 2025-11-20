@@ -256,6 +256,8 @@ const useSynth = (state, onStepChange) => {
   const currentStepRef = useRef(-1);
   const nextStepTimeRef = useRef(0);
   const stateRef = useRef(state);
+  const oscAnalysersRef = useRef<AnalyserNode[]>([]);
+
   useEffect(() => { stateRef.current = state; }, [state]);
 
   const initialize = useCallback(async () => {
@@ -321,10 +323,18 @@ const useSynth = (state, onStepChange) => {
       oscGainNodesRef.current = oscGains;
       oscFilterNodesRef.current = state.oscillators.map(() => context.createBiquadFilter());
 
+      // Create Analysers for Visualization
+      oscAnalysersRef.current = state.oscillators.map(() => {
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 2048;
+        return analyser;
+      });
+
       voicePoolRef.current = state.oscillators.map((oscSettings, oscIndex) => {
         const pool = [];
         const oscGain = oscGainNodesRef.current[oscIndex];
         const oscFilter = oscFilterNodesRef.current[oscIndex];
+        const analyser = oscAnalysersRef.current[oscIndex];
         
         // Configure osc-specific filter
         oscFilter.type = 'lowpass';
@@ -347,12 +357,13 @@ const useSynth = (state, onStepChange) => {
 
         oscFxSendNodesRef.current.push({ delay: delaySend, reverb: reverbSend, disto: distoSend });
         
-        // Routing: Voice -> Gain -> Filter -> (Master + Sends)
+        // Routing: Voice -> Gain -> Filter -> (Master + Sends + Analyser)
         oscGain.connect(oscFilter);
         oscFilter.connect(masterGainRef.current!); // Dry signal
         oscFilter.connect(delaySend); 
         oscFilter.connect(distoSend);
         oscFilter.connect(reverbSend);
+        oscFilter.connect(analyser); // Connect to scope
 
         for (let i = 0; i < MAX_VOICES_PER_OSC; i++) {
           const voice = new Voice(context, oscSettings.adsr);
@@ -549,7 +560,7 @@ const useSynth = (state, onStepChange) => {
     delayFeedback.gain.setTargetAtTime(delay.feedback, now, 0.02);
   }, [state.fx]);
 
-  return { start, stop, initialize };
+  return { start, stop, initialize, analysers: oscAnalysersRef };
 };
 
 
@@ -560,6 +571,72 @@ const hexToRgba = (hex, alpha) => {
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const Oscilloscope = ({ analysers }) => {
+    const canvasRef = useRef(null);
+    
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const updateSize = () => {
+             if (canvas.parentElement) {
+                 const rect = canvas.parentElement.getBoundingClientRect();
+                 canvas.width = rect.width;
+                 canvas.height = rect.height;
+             }
+        };
+        
+        updateSize();
+        
+        const resizeObserver = new ResizeObserver(updateSize);
+        if (canvas.parentElement) resizeObserver.observe(canvas.parentElement);
+        
+        const ctx = canvas.getContext('2d');
+        let animationId;
+        
+        const render = () => {
+            if (!analysers.current) return;
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            analysers.current.forEach((analyser, i) => {
+                if (!analyser) return;
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Float32Array(bufferLength);
+                analyser.getFloatTimeDomainData(dataArray);
+                
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = oscColors[i];
+                
+                const sliceWidth = width / bufferLength;
+                let x = 0;
+                
+                for(let j = 0; j < bufferLength; j++) {
+                    const v = dataArray[j];
+                    const y = (height / 2) + (v * height * 0.8);
+                    if (j === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                    x += sliceWidth;
+                }
+                ctx.stroke();
+            });
+            
+            animationId = requestAnimationFrame(render);
+        };
+        render();
+        
+        return () => {
+            cancelAnimationFrame(animationId);
+            resizeObserver.disconnect();
+        }
+    }, [analysers]);
+
+    return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-60" />;
 };
 
 const Knob = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', size = 60, layout = 'vertical', precision = 2, responsive = false, dragSensitivity = 1 }) => {
@@ -706,28 +783,31 @@ const Toggle = ({ label, checked, onChange, color = '#f59e0b' }) => {
     );
   };
 
-const Transport = ({ settings, onChange, isScrolled, isMobile = false }) => {
+const Transport = ({ settings, onChange, isScrolled, isMobile = false, analysers }) => {
   return (
     <Panel 
         title={null}
         className={`h-auto md:h-24 sticky top-0 z-50 bg-panel-bg transition-all duration-300 ease-in-out flex-none ${isScrolled ? 'md:h-20' : ''}`}
     >
       <div className="flex flex-col md:flex-row items-stretch justify-between h-full w-full">
-        <div className="flex flex-grow md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800">
-            <button 
-                onClick={() => onChange('isPlaying', !settings.isPlaying)}
-                className="flex-grow flex items-center justify-center transition-colors bg-fader-bg hover:bg-gray-700"
-                aria-label={settings.isPlaying ? "Pause" : "Play"}
-            >
-                {settings.isPlaying ? <Pause size={36} className="text-primary-accent" /> : <Play size={36} />}
-            </button>
-             <button 
-                onClick={() => onChange('isPlaying', false)}
-                className="flex-grow flex items-center justify-center bg-fader-bg hover:bg-gray-700 transition-colors"
-                aria-label="Stop"
-            >
-                <StopCircle size={36} />
-            </button>
+        <div className="flex flex-grow md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 relative overflow-hidden">
+            <Oscilloscope analysers={analysers} />
+            <div className="absolute inset-0 flex z-10">
+                <button 
+                    onClick={() => onChange('isPlaying', !settings.isPlaying)}
+                    className="flex-grow flex items-center justify-center transition-colors bg-transparent hover:bg-white/10"
+                    aria-label={settings.isPlaying ? "Pause" : "Play"}
+                >
+                    {settings.isPlaying ? <Pause size={36} className="text-primary-accent" /> : <Play size={36} />}
+                </button>
+                 <button 
+                    onClick={() => onChange('isPlaying', false)}
+                    className="flex-grow flex items-center justify-center bg-transparent hover:bg-white/10 transition-colors"
+                    aria-label="Stop"
+                >
+                    <StopCircle size={36} />
+                </button>
+            </div>
         </div>
         <div className={`flex justify-around items-center md:w-2/3 flex-grow px-2 py-2 md:py-0 border-b md:border-b-0 md:border-r-0 border-gray-800`}>
           <Knob
@@ -1621,7 +1701,7 @@ const SynthView = () => {
     setSequencerVisible(!isMobile);
   }, [isMobile]);
 
-  const { start, stop, initialize } = useSynth(synthState, setCurrentStep);
+  const { start, stop, initialize, analysers } = useSynth(synthState, setCurrentStep);
 
   const handleScroll = () => {
     if (mainContentRef.current) {
@@ -1794,6 +1874,7 @@ const SynthView = () => {
           onChange={handleTransportChange}
           isScrolled={isScrolled}
           isMobile={isMobile}
+          analysers={analysers}
       />
 
       <div className="flex-grow flex flex-col min-h-0 relative">

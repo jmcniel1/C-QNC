@@ -1,11 +1,13 @@
+
 import { useEffect, useRef, useCallback } from 'react';
 import { SynthState, FxNodes, OscFxSendNodes } from '../types';
 import { Voice } from '../audio/Voice';
 import { generateImpulseResponse, makeDistortionCurve } from '../audio/effects';
+import { shiftNoteByFifths } from '../utils';
 
 const MAX_VOICES_PER_OSC = 8;
 
-export const useSynth = (state: SynthState, onStepChange: (step: number) => void) => {
+export const useSynth = (state: SynthState, onStepChange: (steps: { main: number, shift: number }) => void) => {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const voicePoolRef = useRef<Voice[][]>([]);
   const activeVoicesRef = useRef<Voice[]>([]);
@@ -17,11 +19,26 @@ export const useSynth = (state: SynthState, onStepChange: (step: number) => void
   const metronomeGainRef = useRef<GainNode | null>(null);
   const timerRef = useRef<number | null>(null);
   const currentStepRef = useRef(-1);
+  const totalTicksRef = useRef(0);
   const nextStepTimeRef = useRef(0);
   const stateRef = useRef(state);
   const oscAnalysersRef = useRef<AnalyserNode[]>([]);
+  const midiAccessRef = useRef<MIDIAccess | null>(null);
+  
+  // Visual Sync Queue - now carries both main step and shift step
+  const visualQueueRef = useRef<{ main: number, shift: number, time: number }[]>([]);
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => { stateRef.current = state; }, [state]);
+
+  // Initialize MIDI Access
+  useEffect(() => {
+    if (typeof navigator.requestMIDIAccess === 'function') {
+        navigator.requestMIDIAccess().then((access) => {
+            midiAccessRef.current = access;
+        }).catch(err => console.warn("MIDI Access Failed", err));
+    }
+  }, []);
 
   const initialize = useCallback(async () => {
     if (audioCtxRef.current) return;
@@ -124,37 +141,74 @@ export const useSynth = (state: SynthState, onStepChange: (step: number) => void
     } catch (e) { console.error("Web Audio API is not supported.", e); }
   }, [state.fx.delay.feedback, state.fx.reverb.decay, state.fx.reverb.model]);
 
-  const playMetronomeClick = useCallback(() => {
+  const playMetronomeClick = useCallback((time: number) => {
       const audioCtx = audioCtxRef.current;
       if (!audioCtx || !metronomeGainRef.current) return;
-      const now = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.frequency.setValueAtTime(1000, now);
-      gain.gain.setValueAtTime(1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.frequency.setValueAtTime(1000, time);
+      gain.gain.setValueAtTime(1, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
       osc.connect(gain);
       gain.connect(metronomeGainRef.current);
-      osc.start(now);
-      osc.stop(now + 0.05);
+      osc.start(time);
+      osc.stop(time + 0.05);
   }, []);
 
-  const tick = useCallback(() => {
+  const sendMidiMessage = useCallback((data: number[], timestamp?: number) => {
+      if (!midiAccessRef.current) return;
+      midiAccessRef.current.outputs.forEach(output => {
+          output.send(data, timestamp);
+      });
+  }, []);
+
+  const tick = useCallback((scheduledTime: number, stepDuration: number) => {
     const audioCtx = audioCtxRef.current;
     if (!audioCtx) return;
     const { sequencer, oscillators, transport } = stateRef.current;
-    const { stepCount, steps } = sequencer;
-    activeVoicesRef.current.forEach(voice => voice.off(audioCtx));
+    const { stepCount, steps, shiftSteps, shiftDuration } = sequencer;
+    
+    // Schedule Note Off for voices from previous steps
+    activeVoicesRef.current.forEach(voice => voice.off(audioCtx, scheduledTime));
     activeVoicesRef.current = [];
-    currentStepRef.current = (currentStepRef.current + 1) % stepCount;
-    onStepChange(currentStepRef.current);
+    
+    // Main Sequencer Step (Standard 16 steps)
+    const nextStep = (currentStepRef.current + 1) % stepCount;
+    currentStepRef.current = nextStep;
+    
+    // Shift Sequencer Step (Based on Duration Multiplier)
+    // shiftDuration = 1 (1 bar, normal speed), 2 (2 bars), 4 (4 bars), etc.
+    // Each multiplier effectively slows down the step advancement by that factor relative to ticks
+    const multiplier = shiftDuration || 1;
+    const shiftStepIndex = Math.floor(totalTicksRef.current / multiplier) % 16;
+    totalTicksRef.current++;
 
-    if (transport.metronomeOn && currentStepRef.current % 4 === 0) {
-        playMetronomeClick();
+    // Queue Visual Update
+    visualQueueRef.current.push({ 
+        main: nextStep, 
+        shift: shiftStepIndex, 
+        time: scheduledTime 
+    });
+
+    if (transport.metronomeOn && nextStep % 4 === 0) {
+        playMetronomeClick(scheduledTime);
+    }
+
+    // Schedule MIDI Clock Output (24 PPQN)
+    if (transport.midiClockOut && midiAccessRef.current) {
+        const clockInterval = stepDuration / 6;
+        for (let i = 0; i < 6; i++) {
+            const pulseTime = scheduledTime + i * clockInterval;
+            const midiTime = performance.now() + (pulseTime - audioCtx.currentTime) * 1000;
+            sendMidiMessage([0xF8], midiTime);
+        }
     }
     
+    // Determine Shift Amount for this step using independent shift index
+    const currentShift = shiftSteps[shiftStepIndex] || 0;
+
     steps.forEach((track, trackIndex) => {
-      const stepData = track[currentStepRef.current];
+      const stepData = track[nextStep];
       const shouldPlay = stepData && stepData.enabled && stepData.notes.length > 0 && (Math.random() < (stepData.probability ?? 1.0));
 
       if (shouldPlay) {
@@ -165,26 +219,34 @@ export const useSynth = (state: SynthState, onStepChange: (step: number) => void
           const voice = voicePool.find(v => v.isAvailable);
           if (voice) {
             voice.update(oscSettings);
-            voice.on(note.name, oscSettings.octave, audioCtx, note.velocity);
+            
+            // Apply Circle of Fifths Shift
+            const noteToPlay = currentShift !== 0 
+                ? shiftNoteByFifths(note.name, currentShift) 
+                : note.name;
+            
+            voice.on(noteToPlay, oscSettings.octave, audioCtx, scheduledTime, note.velocity);
             activeVoicesRef.current.push(voice);
           }
         });
       }
     });
-  }, [onStepChange, playMetronomeClick]);
+  }, [playMetronomeClick, sendMidiMessage]);
 
   const scheduler = useCallback(() => {
     const audioCtx = audioCtxRef.current;
     if (!audioCtx) return;
     const now = audioCtx.currentTime;
+    
     while (nextStepTimeRef.current < now + 0.1) {
-        tick();
         const { bpm, swing } = stateRef.current.transport;
         const secondsPerBeat = 60.0 / bpm;
         const sixteenthNoteDuration = 0.25 * secondsPerBeat;
         
         let timeToNextStep = sixteenthNoteDuration;
-        const isNextStepOdd = (currentStepRef.current + 1) % 2 !== 0;
+        const nextStepIndex = (currentStepRef.current + 1) % 16;
+        const isNextStepOdd = nextStepIndex % 2 !== 0;
+        
         if (swing !== 50) {
             const swingRatio = swing / 100;
             const swingOffset = (swingRatio - 0.5) * sixteenthNoteDuration;
@@ -194,31 +256,72 @@ export const useSynth = (state: SynthState, onStepChange: (step: number) => void
                 timeToNextStep -= swingOffset;
             }
         }
+        
+        tick(nextStepTimeRef.current, timeToNextStep);
         nextStepTimeRef.current += timeToNextStep;
     }
-    timerRef.current = window.setTimeout(scheduler, 50);
+    timerRef.current = window.setTimeout(scheduler, 25);
   }, [tick]);
+
+  // Visual Sync Loop
+  useEffect(() => {
+    const draw = () => {
+        if (audioCtxRef.current && stateRef.current.transport.isPlaying) {
+            const now = audioCtxRef.current.currentTime;
+            // Consume queue events that are due
+            while (visualQueueRef.current.length > 0 && visualQueueRef.current[0].time <= now) {
+                const event = visualQueueRef.current.shift();
+                if (event) {
+                    onStepChange({ main: event.main, shift: event.shift });
+                }
+            }
+        }
+        animationFrameRef.current = requestAnimationFrame(draw);
+    };
+    animationFrameRef.current = requestAnimationFrame(draw);
+    return () => {
+        if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, [onStepChange]);
 
   const start = useCallback(() => {
     if (!audioCtxRef.current) { initialize(); }
     if (audioCtxRef.current?.state === 'suspended') { audioCtxRef.current.resume(); }
     if (!timerRef.current) {
       currentStepRef.current = -1;
-      nextStepTimeRef.current = audioCtxRef.current?.currentTime ?? 0;
+      totalTicksRef.current = 0; // Reset global ticks for shift alignment
+      visualQueueRef.current = []; // Clear queue
+      nextStepTimeRef.current = (audioCtxRef.current?.currentTime ?? 0) + 0.05;
+      
+      if (stateRef.current.transport.midiClockOut) {
+          sendMidiMessage([0xFA]);
+      }
+      
       scheduler();
     }
-  }, [initialize, scheduler]);
+  }, [initialize, scheduler, sendMidiMessage]);
   
   const stop = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
       currentStepRef.current = -1;
-      onStepChange(-1);
-      activeVoicesRef.current.forEach(v => v.off(audioCtxRef.current!));
-      activeVoicesRef.current = [];
+      totalTicksRef.current = 0;
+      
+      // Clear Queue and reset UI
+      visualQueueRef.current = [];
+      onStepChange({ main: -1, shift: -1 });
+      
+      if (stateRef.current.transport.midiClockOut) {
+          sendMidiMessage([0xFC]);
+      }
+
+      if (audioCtxRef.current) {
+        activeVoicesRef.current.forEach(v => v.off(audioCtxRef.current!, audioCtxRef.current!.currentTime));
+        activeVoicesRef.current = [];
+      }
     }
-  }, [onStepChange]);
+  }, [onStepChange, sendMidiMessage]);
   
   useEffect(() => { masterGainRef.current?.gain.setTargetAtTime(state.transport.masterVolume, audioCtxRef.current?.currentTime ?? 0, 0.01); }, [state.transport.masterVolume]);
   

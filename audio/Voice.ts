@@ -26,22 +26,29 @@ export class Voice {
     this.#adsr = settings.adsr; 
   }
 
-  on(note: string, octaveShift: number, audioCtx: AudioContext, velocity = 1.0) {
+  on(note: string, octaveShift: number, audioCtx: AudioContext, when: number, velocity = 1.0) {
     this.isAvailable = false; 
     this.note = note;
-    this.#osc.frequency.setValueAtTime(noteToFreq(note, octaveShift), audioCtx.currentTime);
-    const now = audioCtx.currentTime;
-    this.#gain.gain.cancelScheduledValues(now);
-    this.#gain.gain.setValueAtTime(0, now);
-    this.#gain.gain.linearRampToValueAtTime(velocity, now + this.#adsr.attack);
-    this.#gain.gain.linearRampToValueAtTime(this.#adsr.sustain * velocity, now + this.#adsr.attack + this.#adsr.decay);
+    this.#osc.frequency.setValueAtTime(noteToFreq(note, octaveShift), when);
+    
+    this.#gain.gain.cancelScheduledValues(when);
+    this.#gain.gain.setValueAtTime(0, when);
+    this.#gain.gain.linearRampToValueAtTime(velocity, when + this.#adsr.attack);
+    this.#gain.gain.linearRampToValueAtTime(this.#adsr.sustain * velocity, when + this.#adsr.attack + this.#adsr.decay);
   }
 
-  off(audioCtx: AudioContext) {
-    const now = audioCtx.currentTime;
-    this.#gain.gain.cancelScheduledValues(now);
-    this.#gain.gain.setValueAtTime(this.#gain.gain.value, now);
-    this.#gain.gain.linearRampToValueAtTime(0, now + this.#adsr.release);
-    setTimeout(() => { this.isAvailable = true; this.note = null; }, (this.#adsr.release + 0.1) * 1000);
+  off(audioCtx: AudioContext, when: number) {
+    this.#gain.gain.cancelScheduledValues(when);
+    // Use setTargetAtTime for smooth exponential decay from whatever value exists at 'when'
+    // Time constant is release / 5 to reach ~1% by the end of release time
+    this.#gain.gain.setTargetAtTime(0, when, this.#adsr.release / 5);
+    
+    // Calculate time until voice is free to reuse
+    // We need to convert the scheduled 'when' time back to a wall-clock timeout delay
+    // Adding a small buffer (100ms) to ensure audio is fully silent before reuse
+    const releaseDuration = this.#adsr.release;
+    const delay = (Math.max(0, when - audioCtx.currentTime) + releaseDuration + 0.1) * 1000;
+    
+    setTimeout(() => { this.isAvailable = true; this.note = null; }, delay);
   }
 }

@@ -1,23 +1,30 @@
+
 import React, { useRef } from 'react';
-import { X, SlidersHorizontal } from 'lucide-react';
+import { X, SlidersHorizontal, MoveUpRight } from 'lucide-react';
 import { Panel } from './ui/Panel';
+import { Knob } from './ui/Knob';
 import { noteToString, hexToRgba } from '../utils';
 import { SequencerTrack } from '../types';
 
 interface SequencerProps {
     steps: SequencerTrack[];
+    shiftSteps: number[];
     stepCount: number;
     currentStep: number;
+    currentShiftStep: number;
     oscColors: string[];
     onStepClick: (track: number, step: number, rect: DOMRect) => void;
     onStepToggle: (track: number, step: number) => void;
     onContextMenu: (e: React.MouseEvent, track: number, step: number) => void;
     onClear: () => void;
+    onShiftChange: (step: number, value: number) => void;
     isMobile: boolean;
     onDetailsClick: (track: number, step: number, rect: DOMRect) => void;
+    shiftDuration: number;
+    onShiftDurationChange: (duration: number) => void;
 }
 
-export const Sequencer: React.FC<SequencerProps> = ({ steps, stepCount, currentStep, oscColors, onStepClick, onStepToggle, onContextMenu, onClear, isMobile, onDetailsClick }) => {
+export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCount, currentStep, currentShiftStep, oscColors, onStepClick, onStepToggle, onContextMenu, onClear, onShiftChange, isMobile, onDetailsClick, shiftDuration, onShiftDurationChange }) => {
     const lastTap = useRef<{time: number, track: number, step: number} | null>(null);
 
     const handleStepTouchStart = (e: React.TouchEvent, track: number, step: number) => {
@@ -132,17 +139,46 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, stepCount, currentS
               </div>
           </div>
         );
-      };
+    };
+
+    const renderShiftStep = (stepIndex: number) => {
+        const isCurrent = currentShiftStep === stepIndex;
+        const shiftVal = shiftSteps[stepIndex];
+        
+        return (
+            <div key={stepIndex} className={`flex-1 min-w-0 h-full ${isMobile ? 'rounded' : 'rounded-lg'} bg-[#1a1a1a] flex flex-col items-center justify-center border border-gray-800 relative shadow-sm`}>
+                {isCurrent && (
+                  <div className="absolute inset-0 bg-white/10 pointer-events-none rounded-lg" />
+                )}
+                <div className="scale-75 md:scale-90">
+                    <Knob 
+                        value={shiftVal} 
+                        onChange={(v) => onShiftChange(stepIndex, v)}
+                        min={-9}
+                        max={9}
+                        step={1}
+                        precision={0}
+                        color="#8b5cf6" // Violet for Shift
+                        dotColor="white"
+                        size={36}
+                        textColor={shiftVal !== 0 ? "text-purple-300 font-bold" : "text-gray-600"}
+                        label={shiftVal > 0 ? `+${shiftVal}` : `${shiftVal}`}
+                    />
+                </div>
+            </div>
+        )
+    };
   
+    const durationOptions = [1, 2, 4, 16, 32];
+
     return (
       <Panel title="Sequencer" className="flex-1 flex flex-col min-h-0" headerControls={clearButton}>
-        <div className="flex-1 flex flex-col min-h-0 bg-[#121212]">
-          <div className={`flex-1 flex flex-col p-2 gap-2 overflow-hidden ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
+        <div className="flex-1 flex flex-col min-h-0 bg-[#121212] overflow-hidden">
+          <div className={`flex-1 flex flex-col p-2 gap-2 overflow-y-auto ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
             {steps.map((track, trackIndex) => {
               if (isMobile) {
-                // Mobile Layout: 2 rows of 8
                 return (
-                  <div key={trackIndex} className="flex flex-col flex-1 min-h-0 gap-1 border-b border-gray-700/50 pb-1 mb-1 last:border-b-0 last:pb-0 last:mb-0">
+                  <div key={trackIndex} className="flex flex-col flex-1 min-h-0 gap-1 border-b border-gray-700/50 pb-1 mb-1">
                     <div className="flex flex-1 gap-1 min-h-0">
                         {Array.from({ length: 8 }).map((_, i) => renderStep(track, i, trackIndex))}
                     </div>
@@ -152,13 +188,50 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, stepCount, currentS
                   </div>
                 );
               }
-              // Desktop Layout: 1 row of 16
               return (
                 <div key={trackIndex} className="flex gap-1 flex-1 min-h-0 basis-0">
                   {Array.from({ length: stepCount }).map((_, stepIndex) => renderStep(track, stepIndex, trackIndex))}
                 </div>
               );
             })}
+
+            {/* Shift Lane */}
+            <div className="flex flex-col flex-1 min-h-0 gap-1 mt-2 border-t border-gray-800 pt-2">
+                 <div className="flex items-center gap-4 px-1 mb-1">
+                     <div className="flex items-center gap-2 text-purple-400 text-xs font-semibold uppercase tracking-wider">
+                        <MoveUpRight size={12} /> Shift (Circle of 5ths)
+                     </div>
+                     <div className="flex items-center gap-1">
+                         {durationOptions.map(dur => (
+                             <button
+                                key={dur}
+                                onClick={() => onShiftDurationChange(dur)}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-colors border ${
+                                    shiftDuration === dur 
+                                    ? 'bg-purple-600 text-white border-purple-500 shadow-sm' 
+                                    : 'bg-gray-800 text-gray-500 border-gray-700 hover:bg-gray-700 hover:text-gray-300'
+                                }`}
+                             >
+                                {dur}B
+                             </button>
+                         ))}
+                     </div>
+                 </div>
+                 {isMobile ? (
+                     <div className="flex flex-col flex-1 min-h-0 gap-1">
+                        <div className="flex flex-1 gap-1 min-h-0">
+                            {Array.from({ length: 8 }).map((_, i) => renderShiftStep(i))}
+                        </div>
+                        <div className="flex flex-1 gap-1 min-h-0">
+                            {Array.from({ length: 8 }).map((_, i) => renderShiftStep(i + 8))}
+                        </div>
+                     </div>
+                 ) : (
+                     <div className="flex gap-1 flex-1 min-h-0 basis-0 h-16">
+                         {Array.from({ length: stepCount }).map((_, stepIndex) => renderShiftStep(stepIndex))}
+                     </div>
+                 )}
+            </div>
           </div>
         </div>
       </Panel>

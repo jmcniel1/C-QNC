@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Cable } from 'lucide-react';
 import { Panel } from './ui/Panel';
 import { Knob } from './ui/Knob';
 import { Oscilloscope } from './Oscilloscope';
@@ -77,19 +78,32 @@ export const Transport: React.FC<TransportProps> = ({ settings, onChange, isScro
             precision={0}
             textSize="text-sm md:text-[10px]"
           />
-          <button
-              onClick={() => onChange('metronomeOn', !settings.metronomeOn)}
-              className={`w-8 h-4 rounded-full p-0.5 transition-colors flex-shrink-0`}
-              style={{ backgroundColor: settings.metronomeOn ? '#f59e0b' : '#333333' }}
-              aria-label="Metronome Toggle"
-              title="Metronome"
-            >
-              <div
-                className={`w-3 h-3 bg-gray-200 rounded-full transition-transform ${
-                  settings.metronomeOn ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              />
-          </button>
+          <div className="flex gap-4 items-center pb-1 md:pb-0 ml-2">
+              <div className="flex flex-row items-center gap-2">
+                  <button
+                      onClick={() => onChange('metronomeOn', !settings.metronomeOn)}
+                      className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-colors`}
+                      style={{ backgroundColor: settings.metronomeOn ? '#f59e0b' : '#333333' }}
+                      aria-label="Metronome Toggle"
+                      title="Metronome"
+                    >
+                      <div className={`w-2 h-2 rounded-full ${settings.metronomeOn ? 'bg-white' : 'bg-gray-500'}`} />
+                  </button>
+                  <span className="text-[9px] md:text-[10px] text-gray-500 font-semibold tracking-wider">CLICK</span>
+              </div>
+              <div className="flex flex-row items-center gap-2">
+                  <button
+                      onClick={() => onChange('midiClockOut', !settings.midiClockOut)}
+                      className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-colors`}
+                      style={{ backgroundColor: settings.midiClockOut ? '#1d4ed8' : '#333333' }}
+                      aria-label="MIDI Clock Toggle"
+                      title="Send MIDI Clock"
+                    >
+                      <Cable size={16} className={settings.midiClockOut ? 'text-white' : 'text-gray-500'} />
+                  </button>
+                  <span className="text-[9px] md:text-[10px] text-gray-500 font-semibold tracking-wider">MIDI</span>
+              </div>
+          </div>
         </div>
       </div>
     </Panel>

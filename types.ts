@@ -1,3 +1,4 @@
+
 export interface Note {
   name: string;
   velocity: number;
@@ -43,7 +44,9 @@ export interface SequencerTrack extends Array<SequencerStep> {}
 
 export interface SequencerState {
   steps: SequencerTrack[];
+  shiftSteps: number[];
   stepCount: number;
+  shiftDuration: number;
 }
 
 export interface TransportState {
@@ -52,6 +55,7 @@ export interface TransportState {
   masterVolume: number;
   metronomeOn: boolean;
   swing: number;
+  midiClockOut: boolean;
 }
 
 export interface ReverbSettings {

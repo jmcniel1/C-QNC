@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useCallback, useId } from 'react';
 import { DraggableHandle } from './ui/DraggableHandle';
 import { ADSRSettings } from '../types';
@@ -63,10 +64,10 @@ export const ADSR: React.FC<ADSRProps> = ({ settings, onChange, color = '#f59e0b
           stroke="none"
           fill={`url(#${gradientId})`}
         />
-        <DraggableHandle cx={ax} cy={ay} onDrag={(dx) => handleDrag('attack', dx, 0)} />
-        <DraggableHandle cx={dx} cy={dy} onDrag={(dx, dy) => { handleDrag('decay', dx, 0); handleDrag('sustain', 0, dy);}} />
-        <DraggableHandle cx={sx} cy={sy} onDrag={(dx, dy) => handleDrag('sustain', 0, dy)} />
-        <DraggableHandle cx={rx} cy={ry} onDrag={(dx) => handleDrag('release', dx, 0)} />
+        <DraggableHandle cx={ax} cy={ay} onDrag={(dx) => handleDrag('attack', dx, 0)} color={color} />
+        <DraggableHandle cx={dx} cy={dy} onDrag={(dx, dy) => { handleDrag('decay', dx, 0); handleDrag('sustain', 0, dy);}} color={color} />
+        <DraggableHandle cx={sx} cy={sy} onDrag={(dx, dy) => handleDrag('sustain', 0, dy)} color={color} />
+        <DraggableHandle cx={rx} cy={ry} onDrag={(dx) => handleDrag('release', dx, 0)} color={color} />
       </svg>
       <div className="flex justify-around w-full mt-1 text-base md:text-xs text-gray-400 font-mono">
           <span>A: {attack.toFixed(2)}</span>

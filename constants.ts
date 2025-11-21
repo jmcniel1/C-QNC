@@ -1,3 +1,4 @@
+
 import { SynthState, ADSRSettings, OscillatorSettings, SequencerState, TransportState, FXState } from './types';
 
 export const oscColors = ['#1d4ed8', '#166534', '#e74e1a'];
@@ -72,10 +73,12 @@ export const initialOsc: OscillatorSettings[] = [
 
 export const initialSequencer: SequencerState = {
   steps: Array(3).fill(0).map(() => Array(16).fill({ notes: [], enabled: true, probability: 1.0 })),
+  shiftSteps: Array(16).fill(0),
   stepCount: 16,
+  shiftDuration: 1,
 };
 
-export const initialTransport: TransportState = { isPlaying: false, bpm: 120, masterVolume: 0.8, metronomeOn: false, swing: 50 };
+export const initialTransport: TransportState = { isPlaying: false, bpm: 120, masterVolume: 0.8, metronomeOn: false, swing: 50, midiClockOut: false };
 
 export const initialFX: FXState = {
   reverb: { decay: 2.5, predelay: 0.1, damper: 8000, model: 'hall' },

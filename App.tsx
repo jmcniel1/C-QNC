@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSynth } from './hooks/useSynth';
 import { Transport } from './components/Transport';
@@ -72,6 +73,7 @@ const App = () => {
     transport: initialTransport, oscillators: initialOsc, sequencer: initialSequencer, fx: initialFX
   });
   const [currentStep, setCurrentStep] = useState(-1);
+  const [currentShiftStep, setCurrentShiftStep] = useState(-1);
   const [editingStep, setEditingStep] = useState<{track: number, step: number, rect: DOMRect} | null>(null);
   const [editingStepDetails, setEditingStepDetails] = useState<{track: number, step: number, rect: DOMRect} | null>(null);
   const [contextMenu, setContextMenu] = useState<{x: number, y: number, trackIndex: number, stepIndex: number, isEnabled: boolean} | null>(null);
@@ -86,7 +88,12 @@ const App = () => {
     setSequencerVisible(!isMobile);
   }, [isMobile]);
 
-  const { start, stop, initialize, analysers } = useSynth(synthState, setCurrentStep);
+  const handleStepUpdate = useCallback((steps: { main: number, shift: number }) => {
+      setCurrentStep(steps.main);
+      setCurrentShiftStep(steps.shift);
+  }, []);
+
+  const { start, stop, initialize, analysers } = useSynth(synthState, handleStepUpdate);
 
   const handleScroll = () => {
     if (mainContentRef.current) {
@@ -204,6 +211,21 @@ const App = () => {
         return { ...prev, sequencer: { ...prev.sequencer, steps: newSteps } };
     });
   }, []);
+  
+  const handleShiftStepChange = useCallback((step: number, value: number) => {
+     setSynthState(prev => {
+         const newShiftSteps = [...prev.sequencer.shiftSteps];
+         newShiftSteps[step] = value;
+         return { ...prev, sequencer: { ...prev.sequencer, shiftSteps: newShiftSteps } };
+     });
+  }, []);
+
+  const handleShiftDurationChange = useCallback((duration: number) => {
+      setSynthState(prev => ({
+          ...prev,
+          sequencer: { ...prev.sequencer, shiftDuration: duration }
+      }));
+  }, []);
 
   const handleNoteToggle = useCallback((noteName: string) => {
     if (!editingStep) return;
@@ -270,7 +292,8 @@ const App = () => {
     if (window.confirm("Are you sure you want to clear the entire sequence? This cannot be undone.")) {
         setSynthState(prev => {
             const newSteps = Array(3).fill(0).map(() => Array(16).fill({ notes: [], enabled: true, probability: 1.0 }));
-            return { ...prev, sequencer: { ...prev.sequencer, steps: newSteps } };
+            const newShiftSteps = Array(16).fill(0);
+            return { ...prev, sequencer: { ...prev.sequencer, steps: newSteps, shiftSteps: newShiftSteps } };
         });
     }
   }, []);
@@ -338,15 +361,20 @@ const App = () => {
             )}
             <Sequencer
             steps={synthState.sequencer.steps}
+            shiftSteps={synthState.sequencer.shiftSteps}
             stepCount={synthState.sequencer.stepCount}
             currentStep={currentStep}
+            currentShiftStep={currentShiftStep}
             oscColors={oscColors}
             onStepClick={(track, step, rect) => setEditingStep({track, step, rect})}
             onDetailsClick={(track, step, rect) => setEditingStepDetails({track, step, rect})}
             onStepToggle={handleStepToggle}
             onContextMenu={handleContextMenu}
             onClear={handleClearSequencer}
+            onShiftChange={handleShiftStepChange}
             isMobile={isMobile}
+            shiftDuration={synthState.sequencer.shiftDuration}
+            onShiftDurationChange={handleShiftDurationChange}
             />
         </footer>
 

@@ -1,12 +1,14 @@
+
 import React, { useRef, useEffect, useCallback } from 'react';
 
 interface DraggableHandleProps {
     cx: number;
     cy: number;
     onDrag: (dx: number, dy: number) => void;
+    color?: string;
 }
 
-export const DraggableHandle: React.FC<DraggableHandleProps> = ({ cx, cy, onDrag }) => {
+export const DraggableHandle: React.FC<DraggableHandleProps> = ({ cx, cy, onDrag, color = '#f59e0b' }) => {
     const prevPos = useRef({ x: 0, y: 0 });
   
     const onDragRef = useRef(onDrag);
@@ -27,6 +29,7 @@ export const DraggableHandle: React.FC<DraggableHandleProps> = ({ cx, cy, onDrag
   
     const onMouseDown = (e: React.MouseEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       prevPos.current = { x: e.clientX, y: e.clientY };
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', onMouseUp);
@@ -51,6 +54,7 @@ export const DraggableHandle: React.FC<DraggableHandleProps> = ({ cx, cy, onDrag
   
     const onTouchStart = (e: React.TouchEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       if (e.touches.length > 0) {
         const touch = e.touches[0];
         prevPos.current = { x: touch.clientX, y: touch.clientY };
@@ -60,13 +64,24 @@ export const DraggableHandle: React.FC<DraggableHandleProps> = ({ cx, cy, onDrag
     };
   
     return (
-      <foreignObject x={cx - 9} y={cy - 9} width={18} height={18} className="overflow-visible">
-        <div
-            onMouseDown={onMouseDown}
-            onTouchStart={onTouchStart}
-            className="w-full h-full rounded-full bg-gray-800/50 backdrop-blur-[4px] cursor-grab active:cursor-grabbing shadow-lg border border-white/10"
-            style={{ touchAction: 'none' }}
+      <g 
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+        style={{ cursor: 'grab', touchAction: 'none' }}
+      >
+        {/* Invisible larger hit area for easier touch interaction */}
+        <circle cx={cx} cy={cy} r={20} fill="transparent" />
+        
+        {/* Visible handle - Semi-opaque black with colored glow */}
+        <circle 
+            cx={cx} 
+            cy={cy} 
+            r={8} 
+            fill="rgba(0, 0, 0, 0.6)" 
+            style={{ 
+                filter: `drop-shadow(0 0 5px ${color})` 
+            }}
         />
-      </foreignObject>
+      </g>
     );
 };

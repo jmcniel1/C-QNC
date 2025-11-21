@@ -9,7 +9,16 @@ interface DelayPanelProps {
 }
 
 export const DelayPanel: React.FC<DelayPanelProps> = ({ settings, onChange }) => {
-  const divisions = ['Free', '1/2', '1/2d', '1/4', '1/8', '1/8d', '1/16', '1/16d'];
+  const divisions = [
+      { val: '1/2', label: '2' },
+      { val: '1/2d', label: '2d' },
+      { val: '1/4', label: '4' },
+      { val: '1/4d', label: '4d' },
+      { val: '1/8', label: '8' },
+      { val: '1/8d', label: '8d' },
+      { val: '1/16', label: '16' },
+      { val: '1/16d', label: '16d' }
+  ];
   const fxColor = '#f59e0b';
 
   return (
@@ -41,15 +50,15 @@ export const DelayPanel: React.FC<DelayPanelProps> = ({ settings, onChange }) =>
       </div>
       <div className="space-y-2 p-2 border-t border-gray-800 mt-auto">
         <div className="grid grid-cols-4 gap-1">
-            {divisions.map(div => (
-                <button key={div}
-                    onClick={() => onChange('division', div)}
-                    className={`px-2 text-base md:text-sm transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
-                        settings.division !== div ? 'bg-fader-bg hover:bg-gray-700 text-white' : 'text-black'
+            {divisions.map(({ val, label }) => (
+                <button key={val}
+                    onClick={() => onChange('division', val)}
+                    className={`px-1 text-sm md:text-xs transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
+                        settings.division !== val ? 'bg-fader-bg hover:bg-gray-700 text-gray-400' : 'text-black font-bold'
                     }`}
-                    style={settings.division === div ? { backgroundColor: fxColor } : {}}
+                    style={settings.division === val ? { backgroundColor: fxColor } : {}}
                 >
-                    {div}
+                    {label}
                 </button>
             ))}
         </div>

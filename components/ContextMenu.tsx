@@ -7,11 +7,9 @@ interface ContextMenuProps {
     onPaste: () => void;
     onClose: () => void;
     isPasteDisabled: boolean;
-    onToggle: () => void;
-    isEnabled: boolean;
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onCopy, onPaste, onClose, isPasteDisabled, onToggle, isEnabled }) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onCopy, onPaste, onClose, isPasteDisabled }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,12 +30,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onCopy, onPaste,
       onClick={(e) => e.stopPropagation()} 
       onContextMenu={(e) => e.preventDefault()} 
     >
-      <button
-        onClick={onToggle}
-        className="w-full text-left px-4 py-2 hover:bg-primary-accent/50 hover:text-white transition-colors text-base"
-      >
-        {isEnabled ? 'Disable Step' : 'Enable Step'}
-      </button>
       <button
         onClick={onCopy}
         className="w-full text-left px-4 py-2 hover:bg-primary-accent/50 hover:text-white transition-colors text-base"

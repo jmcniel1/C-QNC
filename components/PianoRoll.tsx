@@ -1,5 +1,4 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { Wand2 } from 'lucide-react';
 import { noteNames as notes } from '../constants';
 import { Note, SequencerStep } from '../types';
 import { analyzeSequence } from '../audio/musicTheory';
@@ -53,7 +52,7 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
         left = '0';
         transform = 'translate(0, -50%)';
         containerStyleWidth = '100%';
-        containerClass = "absolute bg-panel-bg flex flex-col gap-2 shadow-2xl w-full py-4 border-y border-gray-700";
+        containerClass = "absolute bg-gray-900/80 backdrop-blur-[4px] flex flex-col gap-2 shadow-2xl w-full py-4 border-y border-gray-700";
     } else {
         const windowWidth = window.innerWidth;
         
@@ -62,7 +61,7 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
         const padding = 24; 
         const componentWidth = (visibleWhiteKeys * wKeyWidth) + padding;
         
-        const componentHeight = pHeight + 160; 
+        const componentHeight = pHeight + 120; // Reduced height since header is gone
     
         let topPos = rect.top - componentHeight;
         if (topPos < 10) { topPos = rect.bottom + 10; }
@@ -74,7 +73,7 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
         top = `${topPos}px`;
         left = `${leftPos}px`;
         containerStyleWidth = `${componentWidth}px`;
-        containerClass = "absolute bg-panel-bg rounded-xl p-3 flex flex-col gap-2 shadow-2xl";
+        containerClass = "absolute bg-gray-800/60 backdrop-blur-[4px] rounded-xl p-3 flex flex-col gap-2 shadow-2xl border border-white/10";
     }
 
     const scrollToNotes = (targetNotes: Note[]) => {
@@ -149,17 +148,9 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
                 style={{ top, left, transform, width: containerStyleWidth }}
                 onMouseDown={(e) => e.stopPropagation()}
             >
-                <div className={`flex justify-between items-center border-b border-gray-800 pb-2 ${isMobile ? 'px-4' : 'px-1'}`}>
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-base md:text-xs uppercase tracking-widest text-gray-400 font-semibold">Piano Roll</h3>
-                    </div>
-                     <button onClick={onClose} className="text-xl leading-none w-6 h-6 text-gray-500 hover:text-white rounded-full transition-colors">&times;</button>
-                </div>
-                
                 {/* Smart Assist Panel */}
-                <div className={`bg-black/20 rounded-lg p-2 flex flex-col gap-1 ${isMobile ? 'mx-4' : ''}`}>
-                    <div className="flex items-center justify-between text-xs text-gray-400 px-1">
-                        <span className="flex items-center gap-1 text-primary-accent"><Wand2 size={12}/> Smart Assist</span>
+                <div className={`bg-black/40 rounded-lg p-2 flex flex-col gap-1 ${isMobile ? 'mx-4' : ''}`}>
+                    <div className="flex items-center justify-start text-xs text-gray-400 px-1">
                         <span>Key: <strong className="text-gray-200">{keyName}</strong></span>
                     </div>
                     <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
@@ -169,8 +160,8 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
                                 onClick={() => handleSuggestionClick(chord.notes)}
                                 className={`px-2 py-1 rounded text-xs whitespace-nowrap transition-colors border ${
                                     chord.isCommon 
-                                    ? 'bg-gray-700 hover:bg-gray-600 text-white border-gray-500 shadow-sm' 
-                                    : 'bg-gray-900 hover:bg-gray-800 text-gray-400 border-gray-800'
+                                    ? 'bg-gray-600/80 hover:bg-gray-500/80 text-white border-gray-400/50 shadow-sm' 
+                                    : 'bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 border-gray-700'
                                 }`}
                             >
                                 {chord.name}
@@ -239,7 +230,7 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
                     </div>
                 </div>
 
-                <div className="text-center text-base md:text-xs text-gray-500 min-h-[16px] pt-1">
+                <div className="text-center text-base md:text-xs text-gray-400 min-h-[16px] pt-1">
                     {activeNotes.length > 0 ? activeNotes.map(n => n.name).join(', ') : 'No notes selected'}
                 </div>
             </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Minus, Plus } from 'lucide-react';
 import { Knob } from './ui/Knob';
 import { ADSR } from './ADSR';
 import { OscillatorSettings, ADSRSettings } from '../types';
@@ -11,29 +11,43 @@ interface OscillatorPanelProps {
     color: string;
 }
 
+const WaveIcon = ({ type }: { type: string }) => {
+  const props: React.SVGProps<SVGSVGElement> = { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (type) {
+    case 'sine': return <svg {...props}><path d="M2 12Q7 2 12 12Q17 22 22 12" /></svg>;
+    case 'square': return <svg {...props}><path d="M3 17V7H12V17H21" /></svg>;
+    case 'sawtooth': return <svg {...props}><path d="M2 17L22 7V17" /></svg>;
+    case 'triangle': return <svg {...props}><path d="M3 17L12 6L21 17" /></svg>;
+    default: return null;
+  }
+}
+
 export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOscChange, onADSRChange, color }) => {
   const waveforms = ['sine', 'square', 'sawtooth', 'triangle'];
+  const controlSize = 50;
+  
   return (
     <div className="flex flex-col h-full flex-grow">
-      <div className="p-2 space-y-2">
-        <h3 className="text-gray-400 font-semibold">Osc {settings.id}</h3>
-        <div className="grid grid-cols-2 gap-1">
+      <div className="p-3 border-b border-gray-800 flex items-center justify-between">
+        <h3 className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Osc {settings.id}</h3>
+        <div className="flex bg-black/40 rounded-lg p-1 gap-0.5">
           {waveforms.map((wave) => (
             <button
               key={wave}
               onClick={() => onOscChange('wave', wave)}
-              className={`px-2 py-1 text-base md:text-sm transition-colors rounded-full font-medium ${
-                settings.wave !== wave ? 'bg-fader-bg hover:bg-gray-700' : ''
+              className={`p-1.5 rounded-md transition-all ${
+                settings.wave === wave ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
               }`}
               style={settings.wave === wave ? { backgroundColor: color, color: 'white' } : {}}
+              title={wave.charAt(0).toUpperCase() + wave.slice(1)}
             >
-              {wave.charAt(0).toUpperCase() + wave.slice(1,3)}
+              <WaveIcon type={wave} />
             </button>
           ))}
         </div>
       </div>
       
-      <div className="flex justify-around items-center flex-grow p-2 border-b border-gray-800">
+      <div className="flex justify-around items-start flex-grow p-4 border-b border-gray-800">
           <Knob
             label="Vol"
             value={settings.vol}
@@ -43,19 +57,46 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
             step={0.01}
             color="#444"
             dotColor="white"
+            size={controlSize}
           />
-          <Knob label="Octave" value={settings.octave} onChange={v => onOscChange('octave', v)} min={-4} max={4} step={1} color="#444" dotColor="white" precision={0} dragSensitivity={0.05} />
-          <div className="flex flex-col space-y-1 items-center text-center" style={{ width: '60px' }}>
+          
+          <div className="flex flex-col items-center gap-1">
+                <div 
+                  className="flex flex-col items-center bg-black/20 rounded-lg border border-gray-700/50 overflow-hidden"
+                  style={{ height: `${controlSize}px`, width: '36px' }}
+                >
+                    <button 
+                        onClick={() => onOscChange('octave', Math.min(4, settings.octave + 1))}
+                        className="flex-1 w-full flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30"
+                        disabled={settings.octave >= 4}
+                    >
+                        <Plus size={12} />
+                    </button>
+                    <div className="w-full py-[1px] text-center font-mono font-bold text-[10px] text-white bg-black/40">
+                        {settings.octave > 0 ? `+${settings.octave}` : settings.octave}
+                    </div>
+                    <button 
+                        onClick={() => onOscChange('octave', Math.max(-4, settings.octave - 1))}
+                        className="flex-1 w-full flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30"
+                        disabled={settings.octave <= -4}
+                    >
+                        <Minus size={12} />
+                    </button>
+                </div>
+                <label className="text-base md:text-xs text-gray-400">Octave</label>
+           </div>
+
+          <div className="flex flex-col space-y-1 items-center text-center">
             <button 
               onClick={() => onOscChange('muted', !settings.muted)} 
-              className={`w-[60px] h-[60px] rounded-full flex items-center justify-center transition-colors ${settings.muted ? 'bg-red-700/50' : 'bg-fader-bg'}`}
+              className={`rounded-full flex items-center justify-center transition-colors ${settings.muted ? 'bg-red-700/50' : 'bg-fader-bg'}`}
+              style={{ width: `${controlSize}px`, height: `${controlSize}px` }}
               aria-label={settings.muted ? "Unmute Oscillator" : "Mute Oscillator"}
             >
-              {settings.muted ? <VolumeX size={28} /> : <Volume2 size={28} />}
+              {settings.muted ? <VolumeX size={22} /> : <Volume2 size={22} />}
             </button>
             <div>
               <label className="text-base md:text-xs text-gray-400">Mute</label>
-              <span className="block text-base md:text-sm font-medium invisible">0</span>
             </div>
           </div>
       </div>

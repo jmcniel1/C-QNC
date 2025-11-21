@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap } from 'lucide-react';
+import { Zap, Activity, Hash } from 'lucide-react';
 import { Knob } from '../ui/Knob';
 import { DistortionSettings } from '../../types';
 
@@ -9,7 +9,11 @@ interface DistortionPanelProps {
 }
 
 export const DistortionPanel: React.FC<DistortionPanelProps> = ({ settings, onChange }) => {
-  const models = ['fuzz', 'overdrive', 'crush'];
+  const models = [
+      { id: 'fuzz', icon: Zap, label: 'Fuzz' },
+      { id: 'overdrive', icon: Activity, label: 'Overdrive' },
+      { id: 'crush', icon: Hash, label: 'Bitcrush' }
+  ];
   const fxColor = '#ae2b27';
 
   return (
@@ -22,17 +26,20 @@ export const DistortionPanel: React.FC<DistortionPanelProps> = ({ settings, onCh
             <Knob label="Depth" value={settings.depth} onChange={v => onChange('depth', v)} min={0} max={1} step={0.01} color="#ae2b27" dotColor="white" responsive />
           </div>
       </div>
-      <div className="space-y-2 p-2 border-t border-gray-800 mt-auto">
-        <div className="flex justify-around gap-1">
-            {models.map(model => (
-                <button key={model}
-                    onClick={() => onChange('model', model)}
-                    className={`px-2 text-base md:text-sm transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
-                        settings.model !== model ? 'bg-fader-bg hover:bg-gray-700 text-white' : 'text-white'
+      <div className="p-2 border-t border-gray-800 mt-auto">
+        <div className="flex justify-around gap-4">
+            {models.map(({ id, icon: Icon, label }) => (
+                <button key={id}
+                    onClick={() => onChange('model', id)}
+                    title={label}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md ${
+                        settings.model !== id 
+                        ? 'bg-fader-bg hover:bg-gray-700 text-gray-400' 
+                        : 'text-white scale-110'
                     }`}
-                    style={settings.model === model ? { backgroundColor: fxColor } : {}}
+                    style={settings.model === id ? { backgroundColor: fxColor } : {}}
                 >
-                    {model.charAt(0).toUpperCase() + model.slice(1)}
+                    <Icon size={20} strokeWidth={2.5} />
                 </button>
             ))}
         </div>

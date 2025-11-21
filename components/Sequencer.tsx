@@ -137,16 +137,16 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, stepCount, currentS
     return (
       <Panel title="Sequencer" className="flex-1 flex flex-col min-h-0" headerControls={clearButton}>
         <div className="flex-1 flex flex-col min-h-0 bg-[#121212]">
-          <div className={`flex-1 flex flex-col p-2 gap-2 overflow-y-auto ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
+          <div className={`flex-1 flex flex-col p-2 gap-2 overflow-hidden ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
             {steps.map((track, trackIndex) => {
               if (isMobile) {
                 // Mobile Layout: 2 rows of 8
                 return (
-                  <div key={trackIndex} className="flex flex-col flex-shrink-0 flex-grow gap-1 border-b border-gray-700/50 pb-1 mb-1 last:border-b-0 last:pb-0 last:mb-0" style={{ minHeight: '180px' }}>
-                    <div className="flex flex-1 gap-1">
+                  <div key={trackIndex} className="flex flex-col flex-1 min-h-0 gap-1 border-b border-gray-700/50 pb-1 mb-1 last:border-b-0 last:pb-0 last:mb-0">
+                    <div className="flex flex-1 gap-1 min-h-0">
                         {Array.from({ length: 8 }).map((_, i) => renderStep(track, i, trackIndex))}
                     </div>
-                    <div className="flex flex-1 gap-1">
+                    <div className="flex flex-1 gap-1 min-h-0">
                         {Array.from({ length: 8 }).map((_, i) => renderStep(track, i + 8, trackIndex))}
                     </div>
                   </div>
@@ -154,7 +154,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, stepCount, currentS
               }
               // Desktop Layout: 1 row of 16
               return (
-                <div key={trackIndex} className="flex gap-1 flex-shrink-0 flex-grow basis-0" style={{ minHeight: '120px' }}>
+                <div key={trackIndex} className="flex gap-1 flex-1 min-h-0 basis-0">
                   {Array.from({ length: stepCount }).map((_, stepIndex) => renderStep(track, stepIndex, trackIndex))}
                 </div>
               );

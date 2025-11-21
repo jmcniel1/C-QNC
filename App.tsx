@@ -148,6 +148,7 @@ const App = () => {
         case '1/2': timeInSeconds = secondsPerBeat * 2; break;
         case '1/2d': timeInSeconds = secondsPerBeat * 3; break;
         case '1/4': timeInSeconds = secondsPerBeat; break;
+        case '1/4d': timeInSeconds = secondsPerBeat * 1.5; break;
         case '1/8': timeInSeconds = secondsPerBeat / 2; break;
         case '1/8d': timeInSeconds = (secondsPerBeat / 2) * 1.5; break;
         case '1/16': timeInSeconds = secondsPerBeat / 4; break;
@@ -380,11 +381,6 @@ const App = () => {
             onPaste={handlePaste}
             onClose={() => setContextMenu(null)}
             isPasteDisabled={!copiedStep}
-            isEnabled={contextMenu.isEnabled}
-            onToggle={() => {
-              handleStepToggle(contextMenu.trackIndex, contextMenu.stepIndex);
-              setContextMenu(null);
-            }}
           />
         )}
       </div>

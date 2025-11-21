@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import { noteNames as notes } from '../constants';
 import { Note, SequencerStep } from '../types';
 import { analyzeSequence } from '../audio/musicTheory';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 
 interface PianoRollProps {
     activeNotes: Note[];
@@ -61,7 +62,7 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
         const padding = 24; 
         const componentWidth = (visibleWhiteKeys * wKeyWidth) + padding;
         
-        const componentHeight = pHeight + 120; // Reduced height since header is gone
+        const componentHeight = pHeight + 160; // Increased height for octave controls
     
         let topPos = rect.top - componentHeight;
         if (topPos < 10) { topPos = rect.bottom + 10; }
@@ -136,6 +137,20 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
         }));
         onSetNotes(newNotes);
         scrollToNotes(newNotes);
+    };
+
+    const handleOctaveShift = (shift: number) => {
+        if (activeNotes.length === 0) return;
+        const newNotes = activeNotes.map(n => {
+            const match = n.name.match(/^([A-G]#?)(\d+)$/);
+            if (!match) return n;
+            const [, note, octStr] = match;
+            let newOct = parseInt(octStr) + shift;
+            // Clamp within reasonable 0-8 range
+            newOct = Math.max(0, Math.min(8, newOct));
+            return { ...n, name: `${note}${newOct}` };
+        });
+        onSetNotes(newNotes);
     };
 
     return (
@@ -230,8 +245,27 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
                     </div>
                 </div>
 
-                <div className="text-center text-base md:text-xs text-gray-400 min-h-[16px] pt-1">
-                    {activeNotes.length > 0 ? activeNotes.map(n => n.name).join(', ') : 'No notes selected'}
+                <div className="flex flex-col gap-2 pt-1">
+                    <div className="text-center text-base md:text-xs text-gray-400 min-h-[16px]">
+                        {activeNotes.length > 0 ? activeNotes.map(n => n.name).join(', ') : 'No notes selected'}
+                    </div>
+                    
+                    <div className="flex justify-center gap-2 pb-1">
+                         <button 
+                            onClick={() => handleOctaveShift(-1)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors disabled:opacity-50 shadow-sm"
+                            disabled={activeNotes.length === 0}
+                         >
+                            <ArrowDown size={12} /> Octave
+                         </button>
+                         <button 
+                            onClick={() => handleOctaveShift(1)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors disabled:opacity-50 shadow-sm"
+                            disabled={activeNotes.length === 0}
+                         >
+                            Octave <ArrowUp size={12} />
+                         </button>
+                    </div>
                 </div>
             </div>
         </div>

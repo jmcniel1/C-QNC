@@ -8,7 +8,7 @@ import { PianoRoll } from './components/PianoRoll';
 import { StepDetailsPopover } from './components/StepDetailsPopover';
 import { ContextMenu } from './components/ContextMenu';
 import { initialTransport, initialOsc, initialSequencer, initialFX, oscColors, noteNames } from './constants';
-import { SynthState, OscillatorSettings, ADSRSettings, FXState, SequencerStep } from './types';
+import { SynthState, OscillatorSettings, ADSRSettings, FXState, SequencerStep, Note } from './types';
 
 const useMediaQuery = (query: string) => {
     const [matches, setMatches] = useState(() => {
@@ -50,6 +50,8 @@ export const GlobalStyles = () => {
           .sequencer-toggle-mobile { background: rgb(234, 88, 12); color: white; font-weight: 400; }
           .backdrop-blur-sm { -webkit-backdrop-filter: blur(4px); }
           .backdrop-blur-\\[4px\\] { -webkit-backdrop-filter: blur(4px); }
+          .scrollbar-hide::-webkit-scrollbar { display: none; }
+          .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
           html, body {
             overscroll-behavior: none;
@@ -108,6 +110,24 @@ const App = () => {
       window.removeEventListener('touchstart', init);
     };
   }, [initialize]);
+
+  // Handle Spacebar for Play/Pause
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setSynthState(prev => ({
+          ...prev,
+          transport: {
+            ...prev.transport,
+            isPlaying: !prev.transport.isPlaying
+          }
+        }));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (synthState.transport.isPlaying) { start(); } else { stop(); }
@@ -208,6 +228,16 @@ const App = () => {
       }
       return { ...prev, sequencer: { ...prev.sequencer, steps: newSteps } };
     });
+  }, [editingStep]);
+
+  const handleSetNotes = useCallback((notes: Note[]) => {
+      if (!editingStep) return;
+      const { track, step } = editingStep;
+      setSynthState(prev => {
+          const newSteps = JSON.parse(JSON.stringify(prev.sequencer.steps));
+          newSteps[track][step].notes = notes;
+          return { ...prev, sequencer: { ...prev.sequencer, steps: newSteps } };
+      });
   }, [editingStep]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, trackIndex: number, stepIndex: number) => {
@@ -322,8 +352,10 @@ const App = () => {
         {editingStep && (
           <PianoRoll 
               activeNotes={activeNotesForPiano}
+              trackSteps={synthState.sequencer.steps[editingStep.track]}
               onClose={() => setEditingStep(null)}
               onNoteToggle={handleNoteToggle}
+              onSetNotes={handleSetNotes}
               rect={editingStep.rect}
               oscColor={oscColors[editingStep.track]}
               isMobile={isMobile}

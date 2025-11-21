@@ -1,52 +1,68 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useMemo, useRef, useEffect } from 'react';
+import { Wand2 } from 'lucide-react';
 import { noteNames as notes } from '../constants';
-import { Note } from '../types';
+import { Note, SequencerStep } from '../types';
+import { analyzeSequence } from '../audio/musicTheory';
 
 interface PianoRollProps {
     activeNotes: Note[];
+    trackSteps: SequencerStep[];
     onClose: () => void;
     onNoteToggle: (noteName: string) => void;
+    onSetNotes: (notes: Note[]) => void;
     rect: DOMRect;
     oscColor: string;
     isMobile: boolean;
 }
 
-export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, onClose, onNoteToggle, rect, oscColor, isMobile }) => {
-    const [octave, setOctave] = useState(3);
+export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, onClose, onNoteToggle, onSetNotes, rect, oscColor, isMobile }) => {
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     
     const desktopKeyWidth = 32;
     const mobileKeyWidth = typeof window !== 'undefined' ? window.innerWidth / 14 : 20;
     
     const wKeyWidth = isMobile ? mobileKeyWidth : desktopKeyWidth;
     const bKeyWidth = wKeyWidth * 0.6;
-    const pHeight = isMobile ? 120 : 90; 
+    const pHeight = isMobile ? 120 : 100; 
     const wKeyHeight = pHeight;
     const bKeyHeight = pHeight * 0.6;
 
-    const twoOctaveNotes = [
-        ...notes.map(n => ({ note: n, octave: octave })),
-        ...notes.map(n => ({ note: n, octave: octave + 1 }))
-    ];
+    // Define Range (C1 to B6)
+    const startOctave = 1;
+    const endOctave = 6; 
+    const octaves = Array.from({ length: endOctave - startOctave + 1 }, (_, i) => startOctave + i);
 
-    const whiteKeys = twoOctaveNotes.filter(k => !k.note.includes('#'));
-    const blackKeys = twoOctaveNotes.filter(k => k.note.includes('#'));
+    const allKeys = useMemo(() => {
+        return octaves.flatMap(octave => 
+            notes.map(note => ({ note, octave, id: `${note}${octave}` }))
+        );
+    }, [octaves]);
+
+    const whiteKeys = allKeys.filter(k => !k.note.includes('#'));
+    const blackKeys = allKeys.filter(k => k.note.includes('#'));
     
     const pianoWidth = whiteKeys.length * wKeyWidth;
 
-    const changeOctave = (delta: number) => { setOctave(prev => Math.max(0, Math.min(6, prev + delta))); }
+    // Music Theory Analysis
+    const { keyName, suggestions } = useMemo(() => analyzeSequence(trackSteps), [trackSteps]);
 
-    let top, left, transform, containerClass;
+    let top, left, transform, containerClass, containerStyleWidth;
 
     if (isMobile) {
         top = '50%';
         left = '0';
         transform = 'translate(0, -50%)';
+        containerStyleWidth = '100%';
         containerClass = "absolute bg-panel-bg flex flex-col gap-2 shadow-2xl w-full py-4 border-y border-gray-700";
     } else {
         const windowWidth = window.innerWidth;
-        const componentWidth = pianoWidth + 40;
-        const componentHeight = pHeight + 100;
+        
+        // Calculate width for exactly 2 octaves of white keys plus padding (p-3 = 12px * 2 = 24px)
+        const visibleWhiteKeys = 14; 
+        const padding = 24; 
+        const componentWidth = (visibleWhiteKeys * wKeyWidth) + padding;
+        
+        const componentHeight = pHeight + 160; 
     
         let topPos = rect.top - componentHeight;
         if (topPos < 10) { topPos = rect.bottom + 10; }
@@ -54,10 +70,74 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, onClose, onNo
         let leftPos = rect.left + rect.width / 2 - componentWidth / 2;
         if (leftPos < 10) leftPos = 10;
         if (leftPos + componentWidth > windowWidth - 10) { leftPos = windowWidth - componentWidth - 10; }
+        
         top = `${topPos}px`;
         left = `${leftPos}px`;
+        containerStyleWidth = `${componentWidth}px`;
         containerClass = "absolute bg-panel-bg rounded-xl p-3 flex flex-col gap-2 shadow-2xl";
     }
+
+    const scrollToNotes = (targetNotes: Note[]) => {
+        if (!scrollContainerRef.current || targetNotes.length === 0) return;
+
+        let minIndex = Infinity;
+        let maxIndex = -Infinity;
+
+        targetNotes.forEach(n => {
+             const octave = parseInt(n.name.slice(-1));
+             const noteName = n.name.slice(0, -1);
+             const whiteKeysPerOctave = 7;
+             const whiteKeysBeforeOctave = (octave - startOctave) * whiteKeysPerOctave;
+             
+             let noteIndexInOctave = 0;
+             if (noteName.startsWith('D')) noteIndexInOctave = 1;
+             else if (noteName.startsWith('E')) noteIndexInOctave = 2;
+             else if (noteName.startsWith('F')) noteIndexInOctave = 3;
+             else if (noteName.startsWith('G')) noteIndexInOctave = 4;
+             else if (noteName.startsWith('A')) noteIndexInOctave = 5;
+             else if (noteName.startsWith('B')) noteIndexInOctave = 6;
+
+             const absoluteIndex = whiteKeysBeforeOctave + noteIndexInOctave;
+             if (absoluteIndex < minIndex) minIndex = absoluteIndex;
+             if (absoluteIndex > maxIndex) maxIndex = absoluteIndex;
+        });
+
+        if (minIndex === Infinity) return;
+
+        const centerIndex = (minIndex + maxIndex) / 2;
+        const centerPixel = centerIndex * wKeyWidth + (wKeyWidth / 2);
+        const containerWidth = scrollContainerRef.current.clientWidth;
+        
+        scrollContainerRef.current.scrollTo({
+            left: centerPixel - (containerWidth / 2),
+            behavior: 'smooth'
+        });
+    };
+
+    useEffect(() => {
+        if (activeNotes.length > 0) {
+            setTimeout(() => scrollToNotes(activeNotes), 100);
+        } else {
+            setTimeout(() => {
+                if (scrollContainerRef.current) {
+                   // Default to centering around middle of the range (approx C4)
+                   const middle = (whiteKeys.length * wKeyWidth) / 2;
+                   scrollContainerRef.current.scrollTo({ left: middle - scrollContainerRef.current.clientWidth / 2, behavior: 'smooth' });
+                }
+            }, 100);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleSuggestionClick = (chordNotes: string[]) => {
+        const newNotes: Note[] = chordNotes.map(name => ({
+            name,
+            velocity: 0.8,
+            duration: 1.0
+        }));
+        onSetNotes(newNotes);
+        scrollToNotes(newNotes);
+    };
 
     return (
         <div 
@@ -66,69 +146,101 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, onClose, onNo
         >
             <div 
                 className={containerClass}
-                style={{ top, left, transform }}
+                style={{ top, left, transform, width: containerStyleWidth }}
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className={`flex justify-between items-center border-b border-gray-800 pb-2 ${isMobile ? 'px-4' : 'px-1'}`}>
-                    <h3 className="text-base md:text-xs uppercase tracking-widest text-gray-400 font-semibold">C{octave} - B{octave+1}</h3>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => changeOctave(-1)} disabled={octave === 0} className="p-1 text-gray-400 hover:text-white disabled:opacity-30"><ChevronLeft size={16} /></button>
-                        <span className="text-base md:text-sm font-bold text-gray-300">Octave Range</span>
-                        <button onClick={() => changeOctave(1)} disabled={octave === 6} className="p-1 text-gray-400 hover:text-white disabled:opacity-30"><ChevronRight size={16} /></button>
+                        <h3 className="text-base md:text-xs uppercase tracking-widest text-gray-400 font-semibold">Piano Roll</h3>
                     </div>
                      <button onClick={onClose} className="text-xl leading-none w-6 h-6 text-gray-500 hover:text-white rounded-full transition-colors">&times;</button>
                 </div>
                 
-                <div className="relative mx-auto" style={{ width: `${pianoWidth}px`, height: `${pHeight}px` }}>
-                    {whiteKeys.map((key, index) => {
-                        const keyName = `${key.note}${key.octave}`;
-                        const isActive = activeNotes.some(n => n.name === keyName);
-                        return (
-                             <button
-                                key={keyName}
-                                onClick={() => onNoteToggle(keyName)}
-                                className={`absolute top-0 bottom-0 transition-colors border-r border-b border-gray-900 text-black text-base md:text-xs font-semibold rounded-b-lg flex items-end justify-center pb-1 ${
-                                    !isActive ? 'bg-gray-200 hover:bg-gray-300' : 'text-white'
-                                }`}
-                                style={{
-                                    left: `${index * wKeyWidth}px`,
-                                    width: `${wKeyWidth}px`,
-                                    height: `${wKeyHeight}px`,
-                                    backgroundColor: isActive ? oscColor : undefined,
-                                }}
-                            >
-                                {key.note}
-                            </button>
-                        );
-                    })}
-                    {blackKeys.map((key) => {
-                        const keyName = `${key.note}${key.octave}`;
-                        const isActive = activeNotes.some(n => n.name === keyName);
-                        
-                        const whiteKeysInOctaveBefore = notes.slice(0, notes.indexOf(key.note)).filter(n => !n.includes('#')).length;
-                        const octaveOffset = (key.octave - octave) * 7 * wKeyWidth;
-                        const noteOffset = whiteKeysInOctaveBefore * wKeyWidth - (bKeyWidth / 2);
-
-                        return (
+                {/* Smart Assist Panel */}
+                <div className={`bg-black/20 rounded-lg p-2 flex flex-col gap-1 ${isMobile ? 'mx-4' : ''}`}>
+                    <div className="flex items-center justify-between text-xs text-gray-400 px-1">
+                        <span className="flex items-center gap-1 text-primary-accent"><Wand2 size={12}/> Smart Assist</span>
+                        <span>Key: <strong className="text-gray-200">{keyName}</strong></span>
+                    </div>
+                    <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
+                        {suggestions.map((chord, idx) => (
                             <button
-                                key={keyName}
-                                onClick={() => onNoteToggle(keyName)}
-                                className={`absolute top-0 z-10 transition-colors border border-black/50 rounded-b-lg
-                                    ${!isActive ? 'bg-black hover:bg-gray-800' : ''}`}
-                                style={{
-                                    left: `${octaveOffset + noteOffset}px`,
-                                    width: `${bKeyWidth}px`,
-                                    height: `${bKeyHeight}px`,
-                                    backgroundColor: isActive ? oscColor : undefined,
-                                    opacity: isActive ? 0.9 : 1.0,
-                                }}
-                            />
-                        );
-                    })}
+                                key={idx}
+                                onClick={() => handleSuggestionClick(chord.notes)}
+                                className={`px-2 py-1 rounded text-xs whitespace-nowrap transition-colors border ${
+                                    chord.isCommon 
+                                    ? 'bg-gray-700 hover:bg-gray-600 text-white border-gray-500 shadow-sm' 
+                                    : 'bg-gray-900 hover:bg-gray-800 text-gray-400 border-gray-800'
+                                }`}
+                            >
+                                {chord.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Scrollable Piano Container */}
+                <div 
+                    ref={scrollContainerRef}
+                    className="relative mx-auto mt-1 overflow-x-auto overflow-y-hidden scrollbar-hide" 
+                    style={{ width: '100%', height: `${pHeight + 20}px` }} 
+                >
+                    <div style={{ width: `${pianoWidth}px`, height: `${pHeight}px`, position: 'relative' }}>
+                        {whiteKeys.map((key, index) => {
+                            const isActive = activeNotes.some(n => n.name === key.id);
+                            return (
+                                <button
+                                    key={key.id}
+                                    onClick={() => onNoteToggle(key.id)}
+                                    className={`absolute top-0 bottom-0 transition-colors border-r border-b border-gray-900 text-black text-[10px] font-semibold rounded-b-[4px] flex items-end justify-center pb-1 ${
+                                        !isActive ? 'bg-gray-200 hover:bg-gray-300' : 'text-white'
+                                    }`}
+                                    style={{
+                                        left: `${index * wKeyWidth}px`,
+                                        width: `${wKeyWidth}px`,
+                                        height: `${wKeyHeight}px`,
+                                        backgroundColor: isActive ? oscColor : undefined,
+                                    }}
+                                >
+                                    {key.note.includes('C') && key.note.length === 1 ? key.id : ''}
+                                </button>
+                            );
+                        })}
+                        {blackKeys.map((key) => {
+                            const isActive = activeNotes.some(n => n.name === key.id);
+                            const keyNote = key.note;
+                            const keyOctave = key.octave;
+                            const whiteKeysBefore = (keyOctave - startOctave) * 7;
+                            let offsetInOctave = 0;
+                            if (keyNote.startsWith('C')) offsetInOctave = 1;
+                            else if (keyNote.startsWith('D')) offsetInOctave = 2;
+                            else if (keyNote.startsWith('F')) offsetInOctave = 4;
+                            else if (keyNote.startsWith('G')) offsetInOctave = 5;
+                            else if (keyNote.startsWith('A')) offsetInOctave = 6;
+                            
+                            const leftPos = (whiteKeysBefore + offsetInOctave) * wKeyWidth - (bKeyWidth / 2);
+
+                            return (
+                                <button
+                                    key={key.id}
+                                    onClick={() => onNoteToggle(key.id)}
+                                    className={`absolute top-0 z-10 transition-colors border border-black/50 rounded-b-[4px]
+                                        ${!isActive ? 'bg-black hover:bg-gray-800' : ''}`}
+                                    style={{
+                                        left: `${leftPos}px`,
+                                        width: `${bKeyWidth}px`,
+                                        height: `${bKeyHeight}px`,
+                                        backgroundColor: isActive ? oscColor : undefined,
+                                        opacity: isActive ? 0.9 : 1.0,
+                                    }}
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <div className="text-center text-base md:text-xs text-gray-500 min-h-[16px] pt-1">
-                    {activeNotes.length}/4 notes selected
+                    {activeNotes.length > 0 ? activeNotes.map(n => n.name).join(', ') : 'No notes selected'}
                 </div>
             </div>
         </div>

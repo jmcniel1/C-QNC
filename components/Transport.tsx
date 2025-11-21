@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, StopCircle } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import { Panel } from './ui/Panel';
 import { Knob } from './ui/Knob';
 import { Oscilloscope } from './Oscilloscope';
@@ -32,13 +32,6 @@ export const Transport: React.FC<TransportProps> = ({ settings, onChange, isScro
                     aria-label={settings.isPlaying ? "Pause" : "Play"}
                 >
                     {settings.isPlaying ? <Pause size={20} className="text-primary-accent" /> : <Play size={20} />}
-                </button>
-                 <button 
-                    onClick={() => onChange('isPlaying', false)}
-                    className="flex-grow flex items-center justify-center bg-transparent hover:bg-white/10 transition-colors"
-                    aria-label="Stop"
-                >
-                    <StopCircle size={20} />
                 </button>
             </div>
         </div>

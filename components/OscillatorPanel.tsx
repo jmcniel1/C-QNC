@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Volume2, VolumeX, Minus, Plus } from 'lucide-react';
 import { Knob } from './ui/Knob';
@@ -29,8 +30,8 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
   
   return (
     <div className="flex flex-col h-full flex-grow">
-      <div className="p-2 border-b border-gray-800 flex flex-wrap gap-2 items-center justify-between">
-        <h3 className="text-gray-400 font-semibold text-sm uppercase tracking-wider mr-auto pl-2">O{settings.id}</h3>
+      <div className="p-2 border-b border-gray-800 flex items-center gap-3">
+        <h3 className="text-gray-400 font-semibold text-sm uppercase tracking-wider pl-1 shrink-0">O{settings.id}</h3>
         
         <div className="flex items-center gap-2">
             <div className="relative h-9 bg-black/40 rounded-lg flex items-center min-w-[80px]">

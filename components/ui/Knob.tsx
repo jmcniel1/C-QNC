@@ -108,11 +108,11 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
       
   const labelClass = textSize || (layout === 'vertical' ? 'text-base md:text-xs' : 'text-base md:text-xs');
 
-  // Dynamic dot size calculation with 8px cap
-  const calculatedSize = Math.max(4, size * 0.2);
-  const finalSize = Math.min(8, calculatedSize);
+  // Dynamic dot size calculation with 8px cap - Reduced by ~30%
+  const calculatedSize = Math.max(2.8, size * 0.14);
+  const finalSize = Math.min(5.6, calculatedSize);
   
-  const dotSizeVal = responsive ? 'min(20%, 8px)' : `${finalSize}px`;
+  const dotSizeVal = responsive ? 'min(14%, 5.6px)' : `${finalSize}px`;
   const dotTopVal = '15%';
 
   const displayValue = max === 1 ? (value * 100).toFixed(0) : value.toFixed(logarithmic ? 0 : precision);

@@ -82,3 +82,126 @@ export const initialFX: FXState = {
   delay: { time: 250, feedback: 0, division: '1/4' },
   distortion: { depth: 0, model: 'overdrive' },
 };
+
+export const PRESETS = [
+  {
+    name: 'Init',
+    settings: {
+      wave: 'sine' as const,
+      octave: 0,
+      vol: 0.5,
+      adsr: { attack: 0.01, decay: 0.1, sustain: 1.0, release: 0.1 },
+      filter: { freq: 20000, res: 0.1 }
+    }
+  },
+  {
+    name: 'Sub Bass',
+    settings: {
+      wave: 'sine' as const,
+      octave: -2,
+      vol: 0.8,
+      adsr: { attack: 0.01, decay: 0.2, sustain: 0.9, release: 0.2 },
+      filter: { freq: 150, res: 0.1 }
+    }
+  },
+  {
+    name: 'Reese',
+    settings: {
+      wave: 'sawtooth' as const,
+      octave: -2,
+      vol: 0.6,
+      adsr: { attack: 0.05, decay: 0.3, sustain: 0.7, release: 0.4 },
+      filter: { freq: 800, res: 2.5 }
+    }
+  },
+  {
+    name: 'Warm Pad',
+    settings: {
+      wave: 'triangle' as const,
+      octave: 0,
+      vol: 0.5,
+      adsr: { attack: 0.8, decay: 0.5, sustain: 0.6, release: 1.2 },
+      filter: { freq: 1200, res: 0.2 }
+    }
+  },
+  {
+    name: 'Vapor Lead',
+    settings: {
+      wave: 'square' as const,
+      octave: 1,
+      vol: 0.4,
+      adsr: { attack: 0.01, decay: 0.2, sustain: 0.6, release: 0.3 },
+      filter: { freq: 4000, res: 1.5 }
+    }
+  },
+  {
+    name: 'Pluck',
+    settings: {
+      wave: 'square' as const,
+      octave: 0,
+      vol: 0.5,
+      adsr: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 },
+      filter: { freq: 800, res: 1.0 }
+    }
+  },
+  {
+    name: 'Strings',
+    settings: {
+      wave: 'sawtooth' as const,
+      octave: 0,
+      vol: 0.45,
+      adsr: { attack: 0.4, decay: 0.2, sustain: 0.8, release: 0.8 },
+      filter: { freq: 6000, res: 0.5 }
+    }
+  },
+  {
+    name: 'Brass',
+    settings: {
+      wave: 'sawtooth' as const,
+      octave: -1,
+      vol: 0.6,
+      adsr: { attack: 0.15, decay: 0.2, sustain: 0.7, release: 0.3 },
+      filter: { freq: 2500, res: 1.5 }
+    }
+  },
+  {
+    name: 'E-Piano',
+    settings: {
+      wave: 'triangle' as const,
+      octave: 0,
+      vol: 0.6,
+      adsr: { attack: 0.01, decay: 0.5, sustain: 0.3, release: 0.4 },
+      filter: { freq: 3000, res: 0.5 }
+    }
+  },
+  {
+    name: 'Crystal',
+    settings: {
+      wave: 'sine' as const,
+      octave: 2,
+      vol: 0.4,
+      adsr: { attack: 0.01, decay: 0.8, sustain: 0.1, release: 1.5 },
+      filter: { freq: 8000, res: 0.1 }
+    }
+  },
+  {
+    name: 'Acid',
+    settings: {
+      wave: 'sawtooth' as const,
+      octave: -1,
+      vol: 0.5,
+      adsr: { attack: 0.01, decay: 0.4, sustain: 0.1, release: 0.1 },
+      filter: { freq: 1500, res: 5.0 }
+    }
+  },
+  {
+    name: 'Organ',
+    settings: {
+      wave: 'triangle' as const,
+      octave: 1,
+      vol: 0.5,
+      adsr: { attack: 0.05, decay: 0.1, sustain: 1.0, release: 0.1 },
+      filter: { freq: 5000, res: 0.5 }
+    }
+  }
+];

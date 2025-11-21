@@ -3,6 +3,7 @@ import { Volume2, VolumeX, Minus, Plus } from 'lucide-react';
 import { Knob } from './ui/Knob';
 import { ADSR } from './ADSR';
 import { OscillatorSettings, ADSRSettings } from '../types';
+import { PRESETS } from '../constants';
 
 interface OscillatorPanelProps {
     settings: OscillatorSettings;
@@ -28,22 +29,50 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
   
   return (
     <div className="flex flex-col h-full flex-grow">
-      <div className="p-3 border-b border-gray-800 flex items-center justify-between">
-        <h3 className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Osc {settings.id}</h3>
-        <div className="flex bg-black/40 rounded-lg p-1 gap-0.5">
-          {waveforms.map((wave) => (
-            <button
-              key={wave}
-              onClick={() => onOscChange('wave', wave)}
-              className={`p-1.5 rounded-md transition-all ${
-                settings.wave === wave ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-              }`}
-              style={settings.wave === wave ? { backgroundColor: color, color: 'white' } : {}}
-              title={wave.charAt(0).toUpperCase() + wave.slice(1)}
-            >
-              <WaveIcon type={wave} />
-            </button>
-          ))}
+      <div className="p-2 border-b border-gray-800 flex flex-wrap gap-2 items-center justify-between">
+        <h3 className="text-gray-400 font-semibold text-sm uppercase tracking-wider mr-auto pl-2">O{settings.id}</h3>
+        
+        <div className="flex items-center gap-2">
+            <div className="relative h-9 bg-black/40 rounded-lg flex items-center min-w-[80px]">
+                <select
+                    onChange={(e) => {
+                        const preset = PRESETS.find(p => p.name === e.target.value);
+                        if (preset) {
+                            onOscChange('wave', preset.settings.wave);
+                            onOscChange('octave', preset.settings.octave);
+                            onOscChange('vol', preset.settings.vol);
+                            onOscChange('adsr', preset.settings.adsr);
+                            onOscChange('filter', preset.settings.filter);
+                        }
+                    }}
+                    className="bg-transparent text-[11px] font-medium text-gray-300 w-full h-full rounded-lg pl-3 pr-7 focus:outline-none hover:text-white transition-colors appearance-none cursor-pointer border-none"
+                    defaultValue=""
+                >
+                    <option value="" disabled hidden>Tone</option>
+                    {PRESETS.map(p => (
+                        <option key={p.name} value={p.name}>{p.name}</option>
+                    ))}
+                </select>
+                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+            </div>
+
+            <div className="flex bg-black/40 rounded-lg p-1 gap-0.5 h-9 items-center">
+            {waveforms.map((wave) => (
+                <button
+                key={wave}
+                onClick={() => onOscChange('wave', wave)}
+                className={`p-1.5 rounded-md transition-all flex items-center justify-center ${
+                    settings.wave === wave ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                }`}
+                style={settings.wave === wave ? { backgroundColor: color, color: 'white' } : {}}
+                title={wave.charAt(0).toUpperCase() + wave.slice(1)}
+                >
+                <WaveIcon type={wave} />
+                </button>
+            ))}
+            </div>
         </div>
       </div>
       

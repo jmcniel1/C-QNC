@@ -1,3 +1,4 @@
+
 import React, { useMemo, useRef, useEffect } from 'react';
 import { noteNames as notes } from '../constants';
 import { Note, SequencerStep } from '../types';
@@ -173,10 +174,10 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
                             <button
                                 key={idx}
                                 onClick={() => handleSuggestionClick(chord.notes)}
-                                className={`px-2 py-1 rounded text-xs whitespace-nowrap transition-colors border ${
+                                className={`px-2 py-1 rounded text-xs whitespace-nowrap transition-colors ${
                                     chord.isCommon 
-                                    ? 'bg-gray-600/80 hover:bg-gray-500/80 text-white border-gray-400/50 shadow-sm' 
-                                    : 'bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 border-gray-700'
+                                    ? 'bg-gray-600/80 hover:bg-gray-500/80 text-white shadow-sm' 
+                                    : 'bg-gray-800/60 hover:bg-gray-700/60 text-gray-300'
                                 }`}
                             >
                                 {chord.name}

@@ -358,7 +358,7 @@ const App = () => {
             style={{ maxHeight: isMobile ? 'calc(100% - 100px)' : 'none' }} 
         >
             <main className={`flex flex-col lg:flex-row w-full`}>
-                <div className="flex flex-col w-full lg:w-2/3 xl:w-3/5 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-800">
+                <div className="flex flex-col w-full lg:w-2/3 xl:w-3/5 lg:flex-shrink-0">
                     <Synths
                     oscillators={synthState.oscillators}
                     onOscChange={handleOscChange}

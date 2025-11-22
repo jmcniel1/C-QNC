@@ -5,6 +5,7 @@ import { Knob } from './ui/Knob';
 import { ADSR } from './ADSR';
 import { OscillatorSettings, ADSRSettings } from '../types';
 import { PRESETS } from '../constants';
+import { hexToRgba } from '../utils';
 
 interface OscillatorPanelProps {
     settings: OscillatorSettings;
@@ -29,7 +30,10 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
   const controlSize = 50;
   
   return (
-    <div className="flex flex-col h-full flex-grow">
+    <div 
+        className="flex flex-col h-full flex-grow transition-colors rounded-xl overflow-hidden"
+        style={{ backgroundColor: hexToRgba(color, 0.06) }}
+    >
       <div className="p-2 border-b border-gray-800 flex items-center gap-3">
         <h3 className="text-gray-400 font-semibold text-sm uppercase tracking-wider pl-1 shrink-0">O{settings.id}</h3>
         
@@ -92,7 +96,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
           
           <div className="flex flex-col items-center gap-1">
                 <div 
-                  className="flex flex-row items-center bg-black/20 rounded-lg border border-gray-700/50 overflow-hidden"
+                  className="flex flex-row items-center bg-black/20 rounded-lg overflow-hidden"
                   style={{ height: `36px`, width: 'auto' }}
                 >
                     <button 
@@ -102,7 +106,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                     >
                         <Minus size={12} />
                     </button>
-                    <div className="w-8 h-full flex items-center justify-center font-mono font-bold text-[12px] text-white bg-black/40 border-x border-gray-800">
+                    <div className="w-8 h-full flex items-center justify-center font-mono font-bold text-[12px] text-white bg-black/40">
                         {settings.octave > 0 ? `+${settings.octave}` : settings.octave}
                     </div>
                     <button 

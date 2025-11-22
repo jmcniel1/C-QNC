@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Rotate3d, Box, Disc, Waves } from 'lucide-react';
 import { Knob } from '../ui/Knob';
@@ -31,7 +30,7 @@ export const ReverbPanel: React.FC<ReverbPanelProps> = ({ settings, onChange }) 
             <Knob label="Depth" value={settings.depth} onChange={v => onChange('depth', v)} min={0} max={1} step={0.01} color="#4b5563" dotColor="#f59e0b" responsive />
           </div>
       </div>
-      <div className="p-2 border-t border-gray-800 mt-auto">
+      <div className="p-2 mt-auto">
         <div className="flex justify-around gap-4">
             {models.map(({ id, icon: Icon, label }) => (
                 <button key={id}
@@ -39,7 +38,7 @@ export const ReverbPanel: React.FC<ReverbPanelProps> = ({ settings, onChange }) 
                     title={label}
                     className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md ${
                         settings.model !== id 
-                        ? 'bg-fader-bg hover:bg-gray-700 text-gray-400' 
+                        ? 'bg-panel-bg hover:bg-gray-700 text-gray-400' 
                         : 'scale-110'
                     }`}
                     style={settings.model === id ? { backgroundColor: fxColor, color: activeIconColor } : {}}

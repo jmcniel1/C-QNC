@@ -49,7 +49,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
     };
 
     const clearButton = (
-      <button onClick={onClear} className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-base md:text-xs">
+      <button onClick={onClear} className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-base md:text-xs bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm shadow-sm z-20">
         <X size={14} /> Clear
       </button>
     );
@@ -115,14 +115,14 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
                   )}
               </button>
               
-              <div className="h-1/2 w-full flex border-t border-black/30">
+              <div className="h-1/2 w-full flex">
                   <button
                       onClick={() => onStepToggle(trackIndex, stepIndex)}
                       aria-label={isEnabled ? "Disable step" : "Enable step"}
                       className={`w-1/2 h-full hover:bg-black/20 ${baseButtonStyles}`}
                       onTouchStart={(e) => e.stopPropagation()} 
                   >
-                     <div className={`w-3 h-3 rounded-full transition-colors ${isEnabled ? 'bg-gray-300' : 'bg-gray-700 border-2 border-gray-600'}`}/>
+                     <div className={`w-3 h-3 rounded-full transition-colors ${isEnabled ? 'bg-gray-300' : 'bg-gray-700 ring-2 ring-gray-600'}`}/>
                   </button>
                   <button
                       onClick={(e) => {
@@ -130,7 +130,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
                           onDetailsClick(trackIndex, stepIndex, e.currentTarget.getBoundingClientRect());
                       }}
                       aria-label="Edit step details"
-                      className={`w-1/2 h-full hover:bg-black/20 border-l border-black/30 ${baseButtonStyles}`}
+                      className={`w-1/2 h-full hover:bg-black/20 ${baseButtonStyles}`}
                       onTouchStart={(e) => e.stopPropagation()}
                   >
                       <SlidersHorizontal size={isMobile ? 14 : 16} className="text-gray-400" />
@@ -157,7 +157,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
         const textColor = lightness > 50 ? '#000' : '#fff';
         
         return (
-            <div key={stepIndex} className={`flex-1 min-w-0 h-full ${isMobile ? 'rounded' : 'rounded-lg'} bg-[#1a1a1a] flex flex-col items-stretch justify-between border border-gray-800 relative shadow-sm overflow-hidden group`}>
+            <div key={stepIndex} className={`flex-1 min-w-0 h-full ${isMobile ? 'rounded' : 'rounded-lg'} bg-[#1a1a1a] flex flex-col items-stretch justify-between relative shadow-sm overflow-hidden group`}>
                 {isCurrent && (
                   <div className="absolute inset-0 border-2 border-purple-400/50 rounded-lg pointer-events-none z-20" />
                 )}
@@ -189,8 +189,13 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
     const durationOptions = [1, 2, 4, 16, 32];
 
     return (
-      <Panel title="Sequencer" className="flex-1 flex flex-col min-h-0" headerControls={clearButton}>
-        <div className="flex-1 flex flex-col min-h-0 bg-[#121212] overflow-hidden">
+      <Panel className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 bg-[#121212] overflow-hidden relative">
+          {/* Clear Button Floated Top Right */}
+          <div className="absolute top-2 right-2 z-20">
+              {clearButton}
+          </div>
+
           <div className={`flex-1 flex flex-col p-2 gap-2 overflow-y-auto ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
             {steps.map((track, trackIndex) => {
               if (isMobile) {
@@ -223,10 +228,10 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
                              <button
                                 key={dur}
                                 onClick={() => onShiftDurationChange(dur)}
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-colors border ${
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-colors ${
                                     shiftDuration === dur 
-                                    ? 'bg-purple-600 text-white border-purple-500 shadow-sm' 
-                                    : 'bg-gray-800 text-gray-500 border-gray-700 hover:bg-gray-700 hover:text-gray-300'
+                                    ? 'bg-purple-600 text-white shadow-sm' 
+                                    : 'bg-gray-800 text-gray-500 hover:bg-gray-700 hover:text-gray-300'
                                 }`}
                              >
                                 {dur}B

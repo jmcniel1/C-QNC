@@ -48,13 +48,13 @@ export const DelayPanel: React.FC<DelayPanelProps> = ({ settings, onChange }) =>
             />
           </div>
       </div>
-      <div className="space-y-2 p-2 border-t border-gray-800 mt-auto">
+      <div className="space-y-2 p-2 mt-auto">
         <div className="grid grid-cols-4 gap-1">
             {divisions.map(({ val, label }) => (
                 <button key={val}
                     onClick={() => onChange('division', val)}
-                    className={`px-1 text-sm md:text-xs transition-colors w-full rounded-lg font-medium h-[50px] flex items-center justify-center ${
-                        settings.division !== val ? 'bg-fader-bg hover:bg-gray-700 text-gray-400' : 'text-black font-bold'
+                    className={`px-1 text-sm md:text-xs transition-colors w-full rounded-lg font-medium h-10 flex items-center justify-center ${
+                        settings.division !== val ? 'bg-panel-bg hover:bg-gray-700 text-gray-400' : 'text-black font-bold'
                     }`}
                     style={settings.division === val ? { backgroundColor: fxColor } : {}}
                 >

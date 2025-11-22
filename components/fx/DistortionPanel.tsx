@@ -26,7 +26,7 @@ export const DistortionPanel: React.FC<DistortionPanelProps> = ({ settings, onCh
             <Knob label="Depth" value={settings.depth} onChange={v => onChange('depth', v)} min={0} max={1} step={0.01} color="#ae2b27" dotColor="white" responsive />
           </div>
       </div>
-      <div className="p-2 border-t border-gray-800 mt-auto">
+      <div className="p-2 mt-auto">
         <div className="flex justify-around gap-4">
             {models.map(({ id, icon: Icon, label }) => (
                 <button key={id}
@@ -34,7 +34,7 @@ export const DistortionPanel: React.FC<DistortionPanelProps> = ({ settings, onCh
                     title={label}
                     className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md ${
                         settings.model !== id 
-                        ? 'bg-fader-bg hover:bg-gray-700 text-gray-400' 
+                        ? 'bg-panel-bg hover:bg-gray-700 text-gray-400' 
                         : 'text-white scale-110'
                     }`}
                     style={settings.model === id ? { backgroundColor: fxColor } : {}}

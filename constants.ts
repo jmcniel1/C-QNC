@@ -1,5 +1,7 @@
 
 
+
+
 import { SynthState, ADSRSettings, OscillatorSettings, SequencerState, TransportState, FXState } from './types';
 
 export const oscColors = ['#0e446e', '#00482f', '#b5461b'];
@@ -49,7 +51,7 @@ export const initialSequencer: SequencerState = {
 export const initialTransport: TransportState = { isPlaying: false, bpm: 120, masterVolume: 0.8, metronomeOn: false, swing: 50, midiClockOut: false };
 
 export const initialFX: FXState = {
-  reverb: { time: 3, depth: 0.5, damper: 8000, model: 'hall', gain: 1.0 },
+  reverb: { time: 3, depth: 0.5, damper: 8000, model: 'block', gain: 1.0 },
   delay: { time: 250, feedback: 0, division: '1/4' },
   distortion: { depth: 0, level: 0.8, model: 'overdrive' },
 };

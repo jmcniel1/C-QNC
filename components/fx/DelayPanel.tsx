@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Knob } from '../ui/Knob';
 import { DelaySettings } from '../../types';
@@ -24,12 +23,15 @@ export const DelayPanel: React.FC<DelayPanelProps> = ({ settings, onChange }) =>
 
   return (
     <div className="flex flex-col justify-between h-auto md:h-full w-full">
-      <h3 className="text-white p-2 flex items-center gap-1 font-semibold">
+      <h3 
+        className="p-2 font-thin text-3xl"
+        style={{ color: fxColor }}
+      >
         Delay
       </h3>
        <div className="flex-grow-0 md:flex-grow flex flex-row justify-center items-center gap-6 py-8 md:py-2 md:flex-col md:space-y-4 md:gap-0">
           <div className="w-[40%] md:w-[60%] shrink-0">
-            <Knob label="Feedback" value={settings.feedback} onChange={v => onChange('feedback', v)} min={0} max={1} step={0.01} color={fxColor} dotColor="black" responsive />
+            <Knob label="Feedback" value={settings.feedback} onChange={v => onChange('feedback', v)} min={0} max={1} step={0.01} color={fxColor} dotColor="black" responsive textSize="text-xs" spacing="space-y-3" />
           </div>
           <div className="w-[40%] md:w-[60%] shrink-0">
             <Knob 
@@ -46,6 +48,8 @@ export const DelayPanel: React.FC<DelayPanelProps> = ({ settings, onChange }) =>
                 dotColor="black" 
                 responsive
                 precision={0}
+                textSize="text-xs"
+                spacing="space-y-3"
             />
           </div>
       </div>

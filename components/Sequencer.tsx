@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { X, SlidersHorizontal, MoveUpRight, ChevronUp, ChevronDown, Check } from 'lucide-react';
+import { X, SlidersHorizontal, ChevronUp, ChevronDown, Check } from 'lucide-react';
 import { noteToString, hexToRgba } from '../utils';
 import { SequencerTrack } from '../types';
 import { detectChord } from '../audio/musicTheory';
@@ -281,8 +281,8 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
             {/* Shift Lane */}
             <div className={`flex flex-col flex-1 gap-1 mt-2 pt-2 ${isMobile ? 'min-h-[200px]' : 'min-h-0'}`}>
                  <div className="flex items-center gap-4 px-1 mb-1">
-                     <div className="flex items-center gap-2 text-purple-400 text-xs font-semibold uppercase tracking-wider">
-                        <MoveUpRight size={12} /> Shift (Circle of 5ths)
+                     <div className="text-purple-400 text-2xl font-thin">
+                        Shift
                      </div>
                      <div className="flex items-center gap-1">
                          {durationOptions.map(dur => (

@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useRef } from 'react';
 import { Volume2, VolumeX, Minus, Plus, ArrowUp, ArrowDown, Shuffle, Sparkles } from 'lucide-react';
 import { Knob } from './ui/Knob';
@@ -64,40 +63,52 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
       onOscChange('arpMode', arpModes[nextIndex]);
   };
   
+  const borderColor = hexToRgba(color, 0.2);
+
   return (
     <div 
         className="flex flex-col h-full flex-grow transition-colors rounded-xl overflow-hidden"
         style={{ backgroundColor: hexToRgba(color, 0.06) }}
     >
-      <div className="p-2 border-b border-gray-800 flex-grow-0">
+      <div 
+        className="p-2 border-b flex-grow-0"
+        style={{ borderBottomColor: borderColor }}
+      >
         <div className="flex justify-between items-center w-full gap-2">
-             <div className="relative h-9 bg-black/40 rounded-lg flex items-center flex-grow max-w-[120px]">
-                <span className="absolute left-3 text-gray-500 font-bold text-sm">O{settings.id}</span>
-                <select
-                    onChange={(e) => {
-                        const preset = PRESETS.find(p => p.name === e.target.value);
-                        if (preset) {
-                            onOscChange('wave', preset.settings.wave);
-                            onOscChange('octave', preset.settings.octave);
-                            onOscChange('vol', preset.settings.vol);
-                            onOscChange('adsr', preset.settings.adsr);
-                            onOscChange('filter', preset.settings.filter);
-                        }
-                    }}
-                    className="bg-transparent text-[13px] font-medium text-gray-300 w-full h-full rounded-lg pl-8 pr-6 focus:outline-none hover:text-white transition-colors appearance-none cursor-pointer border-none truncate"
-                    defaultValue=""
+             <div className="flex items-center gap-2 flex-grow mr-2">
+                <span 
+                    className="text-[30px] font-thin leading-none select-none" 
+                    style={{ color: color }}
                 >
-                    <option value="" disabled hidden>Tone</option>
-                    {PRESETS.map(p => (
-                        <option key={p.name} value={p.name}>{p.name}</option>
-                    ))}
-                </select>
-                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                    <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    0{settings.id}
+                </span>
+                <div className="relative h-9 bg-black/40 rounded-lg flex items-center flex-grow min-w-0">
+                    <select
+                        onChange={(e) => {
+                            const preset = PRESETS.find(p => p.name === e.target.value);
+                            if (preset) {
+                                onOscChange('wave', preset.settings.wave);
+                                onOscChange('octave', preset.settings.octave);
+                                onOscChange('vol', preset.settings.vol);
+                                onOscChange('adsr', preset.settings.adsr);
+                                onOscChange('filter', preset.settings.filter);
+                            }
+                        }}
+                        className="bg-transparent text-[13px] font-medium text-gray-300 w-full h-full rounded-lg pl-3 pr-6 focus:outline-none hover:text-white transition-colors appearance-none cursor-pointer border-none truncate"
+                        defaultValue=""
+                    >
+                        <option value="" disabled hidden>Tone</option>
+                        {PRESETS.map(p => (
+                            <option key={p.name} value={p.name}>{p.name}</option>
+                        ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                        <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex bg-black/40 rounded-lg p-1 gap-0.5 h-9 items-center">
+            <div className="flex bg-black/40 rounded-lg p-1 gap-0.5 h-9 items-center flex-shrink-0">
             {waveforms.map((wave) => (
                 <button
                 key={wave}
@@ -115,7 +126,10 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
         </div>
       </div>
       
-      <div className="flex justify-around items-start flex-grow p-4 border-b border-gray-800">
+      <div 
+        className="flex justify-around items-center flex-grow px-4 border-b"
+        style={{ borderBottomColor: borderColor }}
+      >
           <Knob
             label="Vol"
             value={settings.vol}
@@ -216,13 +230,22 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
           </div>
       </div>
       
-      <div className="flex flex-col space-y-2 py-2 px-1 border-b border-gray-800">
-        <h4 className="text-center text-white text-[10px] uppercase font-semibold tracking-wider">FX Sends</h4>
-        <div className="flex justify-around items-center text-sm">
+      <div 
+        className="relative flex items-center justify-between p-1 border-b min-h-[90px]"
+        style={{ borderBottomColor: borderColor }}
+      >
+        <span className="absolute top-2 left-2 text-[10px] font-light text-white/50 tracking-wider">FX</span>
+
+        <div className="flex-grow flex justify-evenly items-center px-2">
             <Knob label="Delay" value={settings.sends.delay} onChange={v => onOscChange('sends', {...settings.sends, delay: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} textColor="text-white" textSize="text-xs" />
             <Knob label="Disto" value={settings.sends.disto} onChange={v => onOscChange('sends', {...settings.sends, disto: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} textColor="text-white" textSize="text-xs" />
             <Knob label="Reverb" value={settings.sends.reverb} onChange={v => onOscChange('sends', {...settings.sends, reverb: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} textColor="text-white" textSize="text-xs" />
-            <div className="flex flex-col space-y-1" style={{width: 100}}>
+        </div>
+        
+        <div 
+            className="flex flex-col justify-center gap-5 p-1 rounded-[6px]"
+            style={{ backgroundColor: hexToRgba(color, 0.15) }}
+        >
               <Knob 
                 label="Freq"
                 value={settings.filter.freq}
@@ -232,7 +255,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                 logarithmic
                 color={color}
                 dotColor="black"
-                size={36}
+                size={32}
                 layout="horizontal"
                 precision={0}
                 textColor="text-white" 
@@ -247,12 +270,11 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                 step={0.01}
                 color={color}
                 dotColor="black"
-                size={36}
+                size={32}
                 layout="horizontal"
                 textColor="text-white" 
                 textSize="text-xs"
               />
-            </div>
         </div>
       </div>
 

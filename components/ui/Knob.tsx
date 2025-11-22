@@ -20,9 +20,10 @@ interface KnobProps {
     responsive?: boolean;
     dragSensitivity?: number;
     centerLabel?: string;
+    spacing?: string;
 }
 
-export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', textSize = '', size = 50, layout = 'vertical', precision = 2, responsive = false, dragSensitivity = 1, centerLabel }) => {
+export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', textSize = '', size = 50, layout = 'vertical', precision = 2, responsive = false, dragSensitivity = 1, centerLabel, spacing = 'space-y-1' }) => {
   const knobRef = useRef<HTMLDivElement>(null);
   const previousY = useRef(0);
   const valueRef = useRef(value);
@@ -173,7 +174,7 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
   })() : null;
 
   return (
-    <div className={`flex group select-none touch-none transition-opacity items-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${layout === 'vertical' ? 'flex-col justify-start space-y-1' : 'flex-row space-x-2'}`} 
+    <div className={`flex group select-none touch-none transition-opacity items-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${layout === 'vertical' ? `flex-col justify-start ${spacing}` : 'flex-row space-x-2'}`} 
       style={containerStyle}>
       
       <div className="relative w-full flex justify-center">

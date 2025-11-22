@@ -69,7 +69,7 @@ export interface ReverbSettings {
   time: number;
   depth: number;
   damper: number;
-  model: 'hall' | 'plate' | 'room';
+  model: 'block' | 'swarm' | 'abyss';
   gain: number;
 }
 

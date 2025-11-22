@@ -1,4 +1,5 @@
 
+
 import { useEffect, useRef, useCallback } from 'react';
 import { SynthState, FxNodes, OscFxSendNodes } from '../types';
 import { Voice } from '../audio/Voice';
@@ -409,7 +410,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       const { distoShaper, distoOutputGain, distoInputGain } = fxNodesRef.current;
       if (!distoShaper || !distoOutputGain || !distoInputGain) return;
       
-      const { depth, model } = state.fx.distortion;
+      const { depth, model, level } = state.fx.distortion;
       const audioCtx = audioCtxRef.current;
       
       distoShaper.curve = makeDistortionCurve(depth, model);
@@ -418,19 +419,21 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       let outputAtten = 1.0;
 
       if (model === 'fuzz') {
-          inputBoost = 2.0 + depth * 10.0; 
-          outputAtten = 0.5 - (depth * 0.2); 
+          inputBoost = 1.5 + depth * 5.0; 
+          outputAtten = 0.4 - (depth * 0.1); 
       } else if (model === 'overdrive') {
-          inputBoost = 1.0 + depth * 5.0;
-          outputAtten = 0.8 - (depth * 0.2);
+          inputBoost = 1.0 + depth * 4.0;
+          outputAtten = 0.8 - (depth * 0.1);
       } else if (model === 'crush') {
           inputBoost = 1.0;
           outputAtten = 1.0;
       }
       
+      const finalOutputGain = outputAtten * (level ?? 0.8);
+
       if (audioCtx) {
         distoInputGain.gain.setTargetAtTime(inputBoost, audioCtx.currentTime, 0.05);
-        distoOutputGain.gain.setTargetAtTime(outputAtten, audioCtx.currentTime, 0.05);
+        distoOutputGain.gain.setTargetAtTime(finalOutputGain, audioCtx.currentTime, 0.05);
       }
 
   }, [state.fx.distortion]);

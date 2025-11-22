@@ -1,4 +1,5 @@
 
+
 export interface Note {
   name: string;
   velocity: number;
@@ -73,6 +74,7 @@ export interface DelaySettings {
 
 export interface DistortionSettings {
   depth: number;
+  level: number;
   model: 'fuzz' | 'overdrive' | 'crush';
 }
 

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Zap, Activity, Hash } from 'lucide-react';
 import { Knob } from '../ui/Knob';
@@ -25,6 +26,9 @@ export const DistortionPanel: React.FC<DistortionPanelProps> = ({ settings, onCh
        <div className="flex-grow-0 md:flex-grow flex flex-row justify-center items-center gap-6 py-8 md:py-2 md:flex-col md:space-y-4 md:gap-0">
           <div className="w-[40%] md:w-[60%] shrink-0">
             <Knob label="Depth" value={settings.depth} onChange={v => onChange('depth', v)} min={0} max={1} step={0.01} color="#ae2b27" dotColor="black" responsive />
+          </div>
+          <div className="w-[40%] md:w-[60%] shrink-0">
+            <Knob label="Level" value={settings.level ?? 0.8} onChange={v => onChange('level', v)} min={0} max={1} step={0.01} color="#ae2b27" dotColor="black" responsive />
           </div>
       </div>
       <div className="p-2 mt-auto">

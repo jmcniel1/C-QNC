@@ -1,4 +1,5 @@
 
+
 import { SynthState, ADSRSettings, OscillatorSettings, SequencerState, TransportState, FXState } from './types';
 
 export const oscColors = ['#0e446e', '#00482f', '#e74e1a'];
@@ -47,7 +48,7 @@ export const initialTransport: TransportState = { isPlaying: false, bpm: 120, ma
 export const initialFX: FXState = {
   reverb: { time: 3, depth: 0.5, damper: 8000, model: 'hall' },
   delay: { time: 250, feedback: 0, division: '1/4' },
-  distortion: { depth: 0, model: 'overdrive' },
+  distortion: { depth: 0, level: 0.8, model: 'overdrive' },
 };
 
 // Normalized Presets to 50% Volume

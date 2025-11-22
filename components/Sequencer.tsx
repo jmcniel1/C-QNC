@@ -144,7 +144,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
                   {hasNotes ? (
                       <>
                         {displayChord ? (
-                             <div className="flex flex-col items-center justify-center w-full gap-3">
+                             <div className="flex flex-col items-center justify-center w-full gap-6">
                                 <span className="text-center text-white/60 text-[9px] leading-none truncate px-1 w-full">
                                     {stepData.notes.map(noteToString).join(' ')}
                                 </span>

@@ -27,6 +27,7 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
   const previousY = useRef(0);
   const valueRef = useRef(value);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragRect, setDragRect] = useState<DOMRect | null>(null);
 
   const log = (min: number, max: number, val: number) => {
     if (val <= min) return 0;
@@ -72,6 +73,7 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
+    setDragRect(null);
     window.removeEventListener('mousemove', handleMouseMove);
     window.removeEventListener('mouseup', handleDragEnd);
     window.removeEventListener('touchmove', handleTouchMove);
@@ -82,6 +84,7 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
   const handleMouseDown = (e: React.MouseEvent) => {
     if (disabled) return;
     e.preventDefault();
+    if (knobRef.current) setDragRect(knobRef.current.getBoundingClientRect());
     setIsDragging(true);
     previousY.current = e.clientY;
     window.addEventListener('mousemove', handleMouseMove);
@@ -91,6 +94,7 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
   
   const handleTouchStart = (e: React.TouchEvent) => {
     if (disabled) return;
+    if (knobRef.current) setDragRect(knobRef.current.getBoundingClientRect());
     setIsDragging(true);
     previousY.current = e.touches[0].clientY;
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -118,8 +122,55 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
 
   const displayValue = max === 1 ? (value * 100).toFixed(0) : value.toFixed(logarithmic ? 0 : precision);
   
-  // Determine popup position: Below for horizontal layouts (like top bar), Above for vertical
-  const popupPositionClass = layout === 'horizontal' ? 'top-[120%] mt-2' : 'bottom-[120%] mb-2';
+  // Calculate fixed position style for the popup
+  const fixedPopup = isDragging && dragRect ? (() => {
+      const cx = dragRect.left + dragRect.width / 2;
+      const cy = dragRect.top + dragRect.height / 2;
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      
+      const style: React.CSSProperties = {
+          position: 'fixed',
+          zIndex: 9999,
+          pointerEvents: 'none',
+          whiteSpace: 'nowrap'
+      };
+
+      if (isMobile) {
+          const windowWidth = window.innerWidth;
+          // Check if the knob center is in the right half of the screen
+          if (cx > windowWidth / 2) {
+              // Place on Left
+              style.left = `${dragRect.left - 20}px`;
+              style.top = `${cy}px`;
+              style.transform = 'translate(-100%, -50%)';
+          } else {
+              // Place on Right
+              style.left = `${dragRect.right + 20}px`;
+              style.top = `${cy}px`;
+              style.transform = 'translate(0, -50%)';
+          }
+      } else {
+          if (layout === 'horizontal') {
+              // Below
+              style.left = `${cx}px`;
+              style.top = `${dragRect.bottom + 10}px`;
+              style.transform = 'translate(-50%, 0)';
+          } else {
+              // Above
+              style.left = `${cx}px`;
+              style.top = `${dragRect.top - 10}px`;
+              style.transform = 'translate(-50%, -100%)';
+          }
+      }
+      
+      return (
+        <div style={style}>
+             <span className="text-4xl font-bold text-primary-accent drop-shadow-2xl bg-black/90 px-3 py-1 rounded-xl border border-gray-700/50 shadow-2xl backdrop-blur-sm">
+                {displayValue}
+             </span>
+        </div>
+      );
+  })() : null;
 
   return (
     <div className={`flex group select-none touch-none transition-opacity items-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${layout === 'vertical' ? 'flex-col justify-start space-y-1' : 'flex-row space-x-2'}`} 
@@ -153,14 +204,8 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
             )}
         </div>
         
-        {/* Large Dragging Value Overlay */}
-        {isDragging && (
-            <div className={`absolute ${popupPositionClass} left-1/2 -translate-x-1/2 z-[9999] pointer-events-none whitespace-nowrap`}>
-                 <span className="text-4xl font-bold text-primary-accent drop-shadow-2xl bg-black/90 px-3 py-1 rounded-xl border border-gray-700/50 shadow-2xl backdrop-blur-sm">
-                    {displayValue}
-                 </span>
-            </div>
-        )}
+        {/* Fixed Position Dragging Overlay */}
+        {fixedPopup}
         
         {/* Center Value Overlay - Show on Hover but Hide on Drag */}
         {!isDragging && (

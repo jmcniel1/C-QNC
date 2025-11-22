@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from 'react';
 import { oscColors } from '../constants';
 
@@ -51,7 +52,8 @@ export const Oscilloscope: React.FC<OscilloscopeProps> = ({ analysers }) => {
                 
                 for(let j = 0; j < bufferLength; j++) {
                     const v = dataArray[j];
-                    const y = (height / 2) + (v * height * 0.8);
+                    // Increased visual gain factor from 0.8 to 2.2 to compensate for lower internal gain
+                    const y = (height / 2) + (v * height * 2.2);
                     if (j === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
                     x += sliceWidth;

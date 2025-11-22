@@ -6,12 +6,14 @@ import { generateImpulseResponse, makeDistortionCurve } from '../audio/effects';
 import { shiftNoteByFifths } from '../utils';
 
 const MAX_VOICES_PER_OSC = 8;
+const OSC_GAIN_SCALE = 0.2; // Scale down internal gain to prevent clipping at max volume
 
 export const useSynth = (state: SynthState, onStepChange: (steps: { main: number, shift: number }) => void) => {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const voicePoolRef = useRef<Voice[][]>([]);
   const activeVoicesRef = useRef<Voice[]>([]);
   const masterGainRef = useRef<GainNode | null>(null);
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
   const oscGainNodesRef = useRef<GainNode[]>([]);
   const oscFilterNodesRef = useRef<BiquadFilterNode[]>([]);
   const fxNodesRef = useRef<FxNodes>({});
@@ -25,7 +27,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
   const oscAnalysersRef = useRef<AnalyserNode[]>([]);
   const midiAccessRef = useRef<MIDIAccess | null>(null);
   
-  // Visual Sync Queue - now carries both main step and shift step
+  // Visual Sync Queue
   const visualQueueRef = useRef<{ main: number, shift: number, time: number }[]>([]);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -46,8 +48,37 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       const context = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioCtxRef.current = context;
 
+      // Master Chain: MasterGain -> SoftClipper -> MasterLowPass -> Compressor -> Destination
       masterGainRef.current = context.createGain();
-      masterGainRef.current.connect(context.destination);
+      
+      // 1. Soft Clipper (Invisible Limiter)
+      const softClipper = context.createWaveShaper();
+      const curve = new Float32Array(4096);
+      for (let i = 0; i < 4096; i++) {
+          const x = (i * 2) / 4096 - 1;
+          curve[i] = Math.tanh(x);
+      }
+      softClipper.curve = curve;
+      
+      // 2. Master Safety Filter (20kHz hard cut)
+      const masterLowPass = context.createBiquadFilter();
+      masterLowPass.type = 'lowpass';
+      masterLowPass.frequency.value = 20000;
+      masterLowPass.Q.value = 0; // Clean roll-off
+
+      // 3. Compressor
+      compressorRef.current = context.createDynamicsCompressor();
+      compressorRef.current.threshold.value = -20;
+      compressorRef.current.knee.value = 30;
+      compressorRef.current.ratio.value = 12;
+      compressorRef.current.attack.value = 0.003;
+      compressorRef.current.release.value = 0.25;
+
+      // Connect the chain
+      masterGainRef.current.connect(softClipper);
+      softClipper.connect(masterLowPass);
+      masterLowPass.connect(compressorRef.current);
+      compressorRef.current.connect(context.destination);
       
       metronomeGainRef.current = context.createGain();
       metronomeGainRef.current.gain.value = 0.5;
@@ -61,7 +92,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       const distoInputGain = context.createGain();
       const distoShaper = context.createWaveShaper();
       const distoOutputGain = context.createGain();
-      distoShaper.oversample = 'none'; 
+      distoShaper.oversample = '4x'; 
 
       const reverb = context.createConvolver();
       reverb.buffer = await generateImpulseResponse(context, state.fx.reverb.model, state.fx.reverb.decay, 4);
@@ -90,17 +121,28 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
           distoInputGain, distoShaper, distoOutputGain
       };
 
-      const oscGains = state.oscillators.map(() => context.createGain());
-      oscGainNodesRef.current = oscGains;
-      oscFilterNodesRef.current = state.oscillators.map(() => context.createBiquadFilter());
+      // Use current state from Ref to ensure we capture any changes made before context init
+      const currentOscillators = stateRef.current.oscillators;
 
-      oscAnalysersRef.current = state.oscillators.map(() => {
+      const oscGains = currentOscillators.map((osc) => {
+          const g = context.createGain();
+          // CRITICAL FIX: Initialize with correctly scaled volume immediately
+          // Without this, gains default to 1.0 causing a loud burst until the first useEffect runs
+          const initialGain = osc.muted ? 0 : osc.vol * OSC_GAIN_SCALE;
+          g.gain.value = initialGain;
+          return g;
+      });
+      oscGainNodesRef.current = oscGains;
+      
+      oscFilterNodesRef.current = currentOscillators.map(() => context.createBiquadFilter());
+
+      oscAnalysersRef.current = currentOscillators.map(() => {
         const analyser = context.createAnalyser();
         analyser.fftSize = 2048;
         return analyser;
       });
 
-      voicePoolRef.current = state.oscillators.map((oscSettings, oscIndex) => {
+      voicePoolRef.current = currentOscillators.map((oscSettings, oscIndex) => {
         const pool = [];
         const oscGain = oscGainNodesRef.current[oscIndex];
         const oscFilter = oscFilterNodesRef.current[oscIndex];
@@ -108,7 +150,9 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
         
         oscFilter.type = 'lowpass';
         oscFilter.frequency.value = oscSettings.filter.freq;
-        oscFilter.Q.value = Math.pow(oscSettings.filter.res, 3) * 20 + 0.1;
+        // Clamp Q to safe values to prevent self-oscillation screaming
+        const safeQ = Math.min(30, Math.pow(oscSettings.filter.res, 3) * 20 + 0.1);
+        oscFilter.Q.value = safeQ;
 
         const delaySend = context.createGain();
         const distoSend = context.createGain();
@@ -168,22 +212,16 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
     const { sequencer, oscillators, transport } = stateRef.current;
     const { stepCount, steps, shiftSteps, shiftDuration } = sequencer;
     
-    // Schedule Note Off for voices from previous steps
     activeVoicesRef.current.forEach(voice => voice.off(audioCtx, scheduledTime));
     activeVoicesRef.current = [];
     
-    // Main Sequencer Step (Standard 16 steps)
     const nextStep = (currentStepRef.current + 1) % stepCount;
     currentStepRef.current = nextStep;
     
-    // Shift Sequencer Step (Based on Duration Multiplier)
-    // shiftDuration = 1 (1 bar, normal speed), 2 (2 bars), 4 (4 bars), etc.
-    // Each multiplier effectively slows down the step advancement by that factor relative to ticks
     const multiplier = shiftDuration || 1;
     const shiftStepIndex = Math.floor(totalTicksRef.current / multiplier) % 16;
     totalTicksRef.current++;
 
-    // Queue Visual Update
     visualQueueRef.current.push({ 
         main: nextStep, 
         shift: shiftStepIndex, 
@@ -194,7 +232,6 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
         playMetronomeClick(scheduledTime);
     }
 
-    // Schedule MIDI Clock Output (24 PPQN)
     if (transport.midiClockOut && midiAccessRef.current) {
         const clockInterval = stepDuration / 6;
         for (let i = 0; i < 6; i++) {
@@ -204,7 +241,6 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
         }
     }
     
-    // Determine Shift Amount for this step using independent shift index
     const currentShift = shiftSteps[shiftStepIndex] || 0;
 
     steps.forEach((track, trackIndex) => {
@@ -219,12 +255,9 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
           const voice = voicePool.find(v => v.isAvailable);
           if (voice) {
             voice.update(oscSettings);
-            
-            // Apply Circle of Fifths Shift
             const noteToPlay = currentShift !== 0 
                 ? shiftNoteByFifths(note.name, currentShift) 
                 : note.name;
-            
             voice.on(noteToPlay, oscSettings.octave, audioCtx, scheduledTime, note.velocity);
             activeVoicesRef.current.push(voice);
           }
@@ -263,12 +296,10 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
     timerRef.current = window.setTimeout(scheduler, 25);
   }, [tick]);
 
-  // Visual Sync Loop
   useEffect(() => {
     const draw = () => {
         if (audioCtxRef.current && stateRef.current.transport.isPlaying) {
             const now = audioCtxRef.current.currentTime;
-            // Consume queue events that are due
             while (visualQueueRef.current.length > 0 && visualQueueRef.current[0].time <= now) {
                 const event = visualQueueRef.current.shift();
                 if (event) {
@@ -289,8 +320,8 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
     if (audioCtxRef.current?.state === 'suspended') { audioCtxRef.current.resume(); }
     if (!timerRef.current) {
       currentStepRef.current = -1;
-      totalTicksRef.current = 0; // Reset global ticks for shift alignment
-      visualQueueRef.current = []; // Clear queue
+      totalTicksRef.current = 0; 
+      visualQueueRef.current = []; 
       nextStepTimeRef.current = (audioCtxRef.current?.currentTime ?? 0) + 0.05;
       
       if (stateRef.current.transport.midiClockOut) {
@@ -308,7 +339,6 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       currentStepRef.current = -1;
       totalTicksRef.current = 0;
       
-      // Clear Queue and reset UI
       visualQueueRef.current = [];
       onStepChange({ main: -1, shift: -1 });
       
@@ -329,7 +359,9 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       if (!audioCtxRef.current) return;
       const now = audioCtxRef.current.currentTime;
       state.oscillators.forEach((osc, i) => {
-          const gainValue = osc.muted ? 0 : osc.vol;
+          // Apply OSC_GAIN_SCALE to scale the UI volume (0-1) to a safe internal range (0-0.2)
+          const gainValue = osc.muted ? 0 : osc.vol * OSC_GAIN_SCALE;
+          
           if (gainValue < 0.001) {
                oscGainNodesRef.current[i]?.gain.setTargetAtTime(0, now, 0.01);
           } else {
@@ -345,9 +377,9 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
 
           const oscFilter = oscFilterNodesRef.current[i];
           if (oscFilter) {
-            const qValue = Math.pow(osc.filter.res, 3) * 20 + 0.1;
+            const safeQ = Math.min(30, Math.pow(osc.filter.res, 3) * 20 + 0.1);
             oscFilter.frequency.setTargetAtTime(osc.filter.freq, now, 0.02);
-            oscFilter.Q.setTargetAtTime(qValue, now, 0.02);
+            oscFilter.Q.setTargetAtTime(safeQ, now, 0.02);
           }
       });
   }, [state.oscillators]);

@@ -2,7 +2,7 @@
 
 import { SynthState, ADSRSettings, OscillatorSettings, SequencerState, TransportState, FXState } from './types';
 
-export const oscColors = ['#0e446e', '#00482f', '#e74e1a'];
+export const oscColors = ['#0e446e', '#00482f', '#b5461b'];
 export const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 export const initialADSR: ADSRSettings = { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.3 };

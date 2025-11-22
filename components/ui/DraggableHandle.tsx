@@ -1,4 +1,6 @@
 
+
+
 import React, { useRef, useEffect, useCallback } from 'react';
 
 interface DraggableHandleProps {
@@ -8,7 +10,7 @@ interface DraggableHandleProps {
     color?: string;
 }
 
-export const DraggableHandle: React.FC<DraggableHandleProps> = ({ cx, cy, onDrag, color = '#faa917' }) => {
+export const DraggableHandle: React.FC<DraggableHandleProps> = ({ cx, cy, onDrag, color = '#d69615' }) => {
     const prevPos = useRef({ x: 0, y: 0 });
   
     const onDragRef = useRef(onDrag);

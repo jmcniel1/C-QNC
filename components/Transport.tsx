@@ -1,4 +1,5 @@
 
+
 import React, { useRef } from 'react';
 import { Play, Pause, Cable, Save, Upload } from 'lucide-react';
 import { Panel } from './ui/Panel';
@@ -99,7 +100,7 @@ export const Transport: React.FC<TransportProps> = ({ settings, onChange, onSave
                   <button
                       onClick={() => onChange('metronomeOn', !settings.metronomeOn)}
                       className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-colors`}
-                      style={{ backgroundColor: settings.metronomeOn ? '#faa917' : '#333333' }}
+                      style={{ backgroundColor: settings.metronomeOn ? '#d69615' : '#333333' }}
                       aria-label="Metronome Toggle"
                       title="Metronome"
                     >

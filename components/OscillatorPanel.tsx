@@ -34,11 +34,10 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
         className="flex flex-col h-full flex-grow transition-colors rounded-xl overflow-hidden"
         style={{ backgroundColor: hexToRgba(color, 0.06) }}
     >
-      <div className="p-2 border-b border-gray-800 flex items-center gap-3">
-        <h3 className="text-gray-400 font-semibold text-sm uppercase tracking-wider pl-1 shrink-0">O{settings.id}</h3>
-        
-        <div className="flex flex-grow items-center justify-between gap-2">
-            <div className="relative h-9 bg-black/40 rounded-lg flex items-center min-w-[80px]">
+      <div className="p-2 border-b border-gray-800 flex-grow-0">
+        <div className="flex justify-between items-center w-full gap-2">
+             <div className="relative h-9 bg-black/40 rounded-lg flex items-center flex-grow max-w-[120px]">
+                <span className="absolute left-3 text-gray-500 font-bold text-xs">O{settings.id}</span>
                 <select
                     onChange={(e) => {
                         const preset = PRESETS.find(p => p.name === e.target.value);
@@ -50,7 +49,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                             onOscChange('filter', preset.settings.filter);
                         }
                     }}
-                    className="bg-transparent text-[11px] font-medium text-gray-300 w-full h-full rounded-lg pl-3 pr-7 focus:outline-none hover:text-white transition-colors appearance-none cursor-pointer border-none"
+                    className="bg-transparent text-[11px] font-medium text-gray-300 w-full h-full rounded-lg pl-8 pr-6 focus:outline-none hover:text-white transition-colors appearance-none cursor-pointer border-none truncate"
                     defaultValue=""
                 >
                     <option value="" disabled hidden>Tone</option>
@@ -92,6 +91,8 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
             color={color}
             dotColor="black"
             size={controlSize}
+            textColor="text-white"
+            textSize="text-[0.5rem]"
           />
           
           <div className="flex flex-col items-center gap-1">
@@ -117,7 +118,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                         <Plus size={12} />
                     </button>
                 </div>
-                <label className="text-base md:text-xs text-gray-400 mt-2">Octave</label>
+                <label className="text-[0.5rem] text-white">Octave</label>
            </div>
 
           <div className="flex flex-col space-y-1 items-center text-center">
@@ -134,17 +135,17 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
               {settings.muted ? <VolumeX size={22} /> : <Volume2 size={22} />}
             </button>
             <div>
-              <label className="text-base md:text-xs text-gray-400">Mute</label>
+              <label className="text-[0.5rem] text-white">Mute</label>
             </div>
           </div>
       </div>
       
       <div className="flex flex-col space-y-2 py-2 px-1 border-b border-gray-800">
-        <h4 className="text-center text-gray-500 text-xs uppercase font-semibold tracking-wider">FX Sends</h4>
+        <h4 className="text-center text-white text-[0.5rem] uppercase font-semibold tracking-wider">FX Sends</h4>
         <div className="flex justify-around items-center text-sm">
-            <Knob label="Delay" value={settings.sends.delay} onChange={v => onOscChange('sends', {...settings.sends, delay: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} />
-            <Knob label="Disto" value={settings.sends.disto} onChange={v => onOscChange('sends', {...settings.sends, disto: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} />
-            <Knob label="Reverb" value={settings.sends.reverb} onChange={v => onOscChange('sends', {...settings.sends, reverb: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} />
+            <Knob label="Delay" value={settings.sends.delay} onChange={v => onOscChange('sends', {...settings.sends, delay: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} textColor="text-white" textSize="text-[0.5rem]" />
+            <Knob label="Disto" value={settings.sends.disto} onChange={v => onOscChange('sends', {...settings.sends, disto: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} textColor="text-white" textSize="text-[0.5rem]" />
+            <Knob label="Reverb" value={settings.sends.reverb} onChange={v => onOscChange('sends', {...settings.sends, reverb: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} textColor="text-white" textSize="text-[0.5rem]" />
             <div className="flex flex-col space-y-1" style={{width: 100}}>
               <Knob 
                 label="Freq"
@@ -158,6 +159,8 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                 size={36}
                 layout="horizontal"
                 precision={0}
+                textColor="text-white" 
+                textSize="text-[0.5rem]"
               />
               <Knob 
                 label="Res"
@@ -170,6 +173,8 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                 dotColor="black"
                 size={36}
                 layout="horizontal"
+                textColor="text-white" 
+                textSize="text-[0.5rem]"
               />
             </div>
         </div>

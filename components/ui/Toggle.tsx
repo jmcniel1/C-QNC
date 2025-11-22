@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 
 interface ToggleProps {
@@ -7,7 +9,7 @@ interface ToggleProps {
     color?: string;
 }
 
-export const Toggle: React.FC<ToggleProps> = ({ label, checked, onChange, color = '#faa917' }) => {
+export const Toggle: React.FC<ToggleProps> = ({ label, checked, onChange, color = '#d69615' }) => {
     return (
       <label className="flex items-center justify-between w-full cursor-pointer">
         <span className="text-gray-400 text-base md:text-[10px] mr-2">{label}</span>

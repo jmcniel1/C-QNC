@@ -14,7 +14,11 @@ export const Synths: React.FC<SynthsProps> = ({ oscillators, onOscChange, onADSR
   return (
     <div className="h-full w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
       {oscillators.map((osc, i) => (
-        <div key={osc.id} className="flex-grow flex flex-col min-w-0">
+        <div 
+            key={osc.id} 
+            className="flex-grow flex flex-col min-w-0"
+            style={{ zIndex: oscillators.length - i }}
+        >
           <OscillatorPanel
             settings={osc}
             onOscChange={(key, value) => onOscChange(i, key, value)}

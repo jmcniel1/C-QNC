@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useRef, useEffect } from 'react';
 import { noteNames as notes } from '../constants';
 import { Note, SequencerStep } from '../types';
@@ -10,7 +11,7 @@ interface PianoRollProps {
     trackSteps: SequencerStep[];
     onClose: () => void;
     onNoteToggle: (noteName: string) => void;
-    onSetNotes: (notes: Note[]) => void;
+    onSetNotes: (notes: Note[], chordName?: string) => void;
     rect: DOMRect;
     oscColor: string;
     isMobile: boolean;
@@ -130,13 +131,13 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleSuggestionClick = (chordNotes: string[]) => {
+    const handleSuggestionClick = (chordNotes: string[], chordName: string) => {
         const newNotes: Note[] = chordNotes.map(name => ({
             name,
             velocity: 0.8,
             duration: 1.0
         }));
-        onSetNotes(newNotes);
+        onSetNotes(newNotes, chordName);
         scrollToNotes(newNotes);
     };
 
@@ -173,7 +174,7 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
                         {suggestions.map((chord, idx) => (
                             <button
                                 key={idx}
-                                onClick={() => handleSuggestionClick(chord.notes)}
+                                onClick={() => handleSuggestionClick(chord.notes, chord.name)}
                                 className={`px-2 py-1 rounded text-xs whitespace-nowrap transition-colors ${
                                     chord.isCommon 
                                     ? 'bg-gray-600/80 hover:bg-gray-500/80 text-white shadow-sm' 

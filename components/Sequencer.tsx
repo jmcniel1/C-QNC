@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { X, SlidersHorizontal, MoveUpRight, ChevronUp, ChevronDown, Check } from 'lucide-react';
 import { noteToString, hexToRgba } from '../utils';
 import { SequencerTrack } from '../types';
+import { detectChord } from '../audio/musicTheory';
 
 interface SequencerProps {
     steps: SequencerTrack[];
@@ -116,8 +117,13 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
         };
         
         const stepRoundingClass = isMobile ? 'rounded' : 'rounded-lg';
-        const noteTextClass = isCurrent ? 'text-sm font-bold' : 'text-xs';
         const baseButtonStyles = 'flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-primary-accent';
+        
+        // Detect Chord Name if not provided
+        let displayChord = stepData.chordName;
+        if (!displayChord && hasNotes) {
+            displayChord = detectChord(stepData.notes) || undefined;
+        }
   
         return (
           <div 
@@ -133,13 +139,27 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
               <button
                   onClick={(e) => onStepClick(trackIndex, stepIndex, e.currentTarget.getBoundingClientRect())}
                   aria-label="Edit notes"
-                  className={`w-full h-1/2 relative flex items-center justify-center p-1 font-mono hover:bg-black/10 ${baseButtonStyles}`}
+                  className={`w-full h-1/2 relative flex flex-col items-center justify-center p-0.5 font-mono hover:bg-black/10 ${baseButtonStyles}`}
               >
-                  {hasNotes && (
-                      <span className={`text-white/90 leading-tight break-all transition-all text-center ${noteTextClass}`}>
-                          {stepData.notes.map(noteToString).join(' ')}
-                      </span>
-                  )}
+                  {hasNotes ? (
+                      <>
+                        {displayChord ? (
+                             <>
+                                <span className="text-white/60 text-[9px] leading-none truncate max-w-full mb-1">
+                                    {stepData.notes.map(noteToString).join(' ')}
+                                </span>
+                                <span className="text-white font-bold text-[13px] leading-none truncate max-w-full drop-shadow-sm bg-black/40 rounded px-[6px] pt-[6px] pb-[4px]">
+                                    {displayChord}
+                                </span>
+                             </>
+                        ) : (
+                            <span className="text-white/90 text-xs leading-tight break-all text-center">
+                                {stepData.notes.map(noteToString).join(' ')}
+                            </span>
+                        )}
+                      </>
+                  ) : null}
+
                   {probability < 1.0 && (
                       <span className="absolute top-0.5 right-1.5 text-white/70 text-[10px] font-mono pointer-events-none z-10">
                           {`${(probability * 100).toFixed(0)}%`}

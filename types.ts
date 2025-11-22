@@ -39,6 +39,7 @@ export interface SequencerStep {
   notes: Note[];
   enabled: boolean;
   probability?: number;
+  chordName?: string;
 }
 
 export interface SequencerTrack extends Array<SequencerStep> {}

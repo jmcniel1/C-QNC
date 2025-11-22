@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSynth } from './hooks/useSynth';
 import { Transport } from './components/Transport';
@@ -235,6 +236,11 @@ const App = () => {
       const currentStepData = newSteps[track][step];
       const noteIndex = currentStepData.notes.findIndex((n: any) => n.name === noteName);
 
+      // Clear the preset chord name when manually editing notes
+      if (currentStepData.chordName) {
+          delete currentStepData.chordName;
+      }
+
       if (noteIndex > -1) {
         currentStepData.notes.splice(noteIndex, 1);
       } else if (currentStepData.notes.length < 4) {
@@ -253,12 +259,17 @@ const App = () => {
     });
   }, [editingStep]);
 
-  const handleSetNotes = useCallback((notes: Note[]) => {
+  const handleSetNotes = useCallback((notes: Note[], chordName?: string) => {
       if (!editingStep) return;
       const { track, step } = editingStep;
       setSynthState(prev => {
           const newSteps = JSON.parse(JSON.stringify(prev.sequencer.steps));
           newSteps[track][step].notes = notes;
+          if (chordName) {
+              newSteps[track][step].chordName = chordName;
+          } else {
+              delete newSteps[track][step].chordName;
+          }
           return { ...prev, sequencer: { ...prev.sequencer, steps: newSteps } };
       });
   }, [editingStep]);

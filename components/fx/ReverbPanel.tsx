@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Box, Disc, Waves } from 'lucide-react';
 import { Knob } from '../ui/Knob';
@@ -16,7 +17,7 @@ export const ReverbPanel: React.FC<ReverbPanelProps> = ({ settings, onChange }) 
       { id: 'room', icon: Box, label: 'Room' }
   ];
   const fxColor = '#4c4c4c';
-  const activeIconColor = '#faa917';
+  const activeIconColor = '#d69615';
 
   return (
     <div className="flex flex-col justify-between h-auto md:h-full w-full">

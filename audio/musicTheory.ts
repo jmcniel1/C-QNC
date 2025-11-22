@@ -1,5 +1,5 @@
 import { noteNames } from '../constants';
-import { SequencerStep } from '../types';
+import { SequencerStep, Note } from '../types';
 
 // Pitch class mapping (C=0, C#=1, ... B=11)
 const getPitchClass = (noteName: string): number => {
@@ -28,11 +28,89 @@ const INTERVALS: Record<string, number[]> = {
     'm7b5': [0, 3, 6, 10],
 };
 
+// Definitions for chord detection
+const CHORD_PATTERNS: { name: string; intervals: number[] }[] = [
+    { name: 'Maj', intervals: [0, 4, 7] },
+    { name: 'm', intervals: [0, 3, 7] },
+    { name: 'dim', intervals: [0, 3, 6] },
+    { name: 'Aug', intervals: [0, 4, 8] },
+    { name: 'sus2', intervals: [0, 2, 7] },
+    { name: 'sus4', intervals: [0, 5, 7] },
+    { name: '7', intervals: [0, 4, 7, 10] },
+    { name: 'Maj7', intervals: [0, 4, 7, 11] },
+    { name: 'm7', intervals: [0, 3, 7, 10] },
+    { name: 'mMaj7', intervals: [0, 3, 7, 11] },
+    { name: '6', intervals: [0, 4, 7, 9] },
+    { name: 'm6', intervals: [0, 3, 7, 9] },
+    { name: '9', intervals: [0, 4, 7, 10, 2] },
+    { name: 'Maj9', intervals: [0, 4, 7, 11, 2] },
+    { name: 'm9', intervals: [0, 3, 7, 10, 2] },
+];
+
 export interface ChordSuggestion {
     name: string;
     notes: string[]; // e.g. "C4", "E4"
     isCommon?: boolean;
 }
+
+export const detectChord = (notes: Note[]): string | null => {
+    if (!notes || notes.length === 0) return null;
+    if (notes.length === 1) return notes[0].name.slice(0, -1); // Just the note name (e.g., "C")
+
+    const pitchClasses = Array.from(new Set(notes.map(n => getPitchClass(n.name)))).sort((a, b) => a - b);
+    
+    if (pitchClasses.length < 2) return notes[0].name.slice(0, -1);
+
+    // Brute force check every note in the set as the potential root
+    for (let i = 0; i < pitchClasses.length; i++) {
+        const root = pitchClasses[i];
+        
+        // Calculate intervals relative to this root
+        const currentIntervals = pitchClasses.map(pc => {
+            let interval = pc - root;
+            if (interval < 0) interval += 12;
+            return interval;
+        }).sort((a, b) => a - b);
+
+        // Check against patterns
+        for (const pattern of CHORD_PATTERNS) {
+            // Check if all pattern intervals exist in our current intervals
+            // (We allow extra notes for now, or strict match? Let's do strict subset matching for basic triads, loose for extended)
+            
+            // 1. Strict check: Lengths match and values match
+            const strictMatch = pattern.intervals.length === currentIntervals.length && 
+                                pattern.intervals.every((val, idx) => val === currentIntervals[idx]);
+            
+            if (strictMatch) {
+                return `${noteNames[root]}${pattern.name}`;
+            }
+            
+            // 2. Subset check (for complex chords where we might have inversions or partial voicings)
+            // If it has at least 3 notes and matches a complex pattern
+            if (pattern.intervals.length >= 3 && currentIntervals.length >= 3) {
+                 const isSubset = pattern.intervals.every(iv => currentIntervals.includes(iv));
+                 // Also ensure we don't have too many 'wrong' notes.
+                 // For simplicity in this light version, we stick to strict checks or 'close enough' logic
+                 if (isSubset && currentIntervals.length <= pattern.intervals.length + 1) {
+                     // Prioritize the exact match loop above, but return this if no strict match found later?
+                     // Let's return immediately for now
+                      return `${noteNames[root]}${pattern.name}`;
+                 }
+            }
+        }
+    }
+
+    // Fallback: Just return root note name + "?" or just root
+    // Try to identify the bass note (lowest octave)
+    const sortedNotes = [...notes].sort((a, b) => {
+        const octA = parseInt(a.name.slice(-1));
+        const octB = parseInt(b.name.slice(-1));
+        if (octA !== octB) return octA - octB;
+        return getPitchClass(a.name) - getPitchClass(b.name);
+    });
+    
+    return sortedNotes[0].name.slice(0, -1); // Return lowest note name
+};
 
 export const analyzeSequence = (steps: SequencerStep[]): { keyName: string, suggestions: ChordSuggestion[] } => {
     // 1. Focus on the first 2 filled steps for context

@@ -1,3 +1,5 @@
+
+
 import React, { useRef, useCallback } from 'react';
 
 interface VerticalSliderProps {
@@ -10,7 +12,7 @@ interface VerticalSliderProps {
     color?: string;
 }
 
-export const VerticalSlider: React.FC<VerticalSliderProps> = ({ label, value, onChange, min = 0, max = 1, step = 0.01, color = '#faa917' }) => {
+export const VerticalSlider: React.FC<VerticalSliderProps> = ({ label, value, onChange, min = 0, max = 1, step = 0.01, color = '#d69615' }) => {
     const sliderRef = useRef<HTMLDivElement>(null);
   
     const handleValueChange = (clientY: number) => {

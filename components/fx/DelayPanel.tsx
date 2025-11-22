@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Knob } from '../ui/Knob';
 import { DelaySettings } from '../../types';
@@ -19,7 +20,7 @@ export const DelayPanel: React.FC<DelayPanelProps> = ({ settings, onChange }) =>
       { val: '1/16', label: '16' },
       { val: '1/16d', label: '16d' }
   ];
-  const fxColor = '#faa917';
+  const fxColor = '#d69615';
 
   return (
     <div className="flex flex-col justify-between h-auto md:h-full w-full">
@@ -53,7 +54,7 @@ export const DelayPanel: React.FC<DelayPanelProps> = ({ settings, onChange }) =>
             {divisions.map(({ val, label }) => (
                 <button key={val}
                     onClick={() => onChange('division', val)}
-                    className={`px-1 text-sm md:text-xs transition-colors w-full rounded-lg font-medium h-10 flex items-center justify-center ${
+                    className={`px-1 text-sm md:text-xs transition-colors w-full rounded-full font-medium h-10 flex items-center justify-center ${
                         settings.division !== val ? 'bg-black hover:bg-gray-700 text-gray-400' : 'text-black font-bold'
                     }`}
                     style={settings.division === val ? { backgroundColor: fxColor } : {}}

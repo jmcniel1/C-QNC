@@ -288,14 +288,19 @@ const App = () => {
     setContextMenu(null);
   }, [contextMenu, copiedStep]);
 
-  const handleClearSequencer = useCallback(() => {
-    if (window.confirm("Are you sure you want to clear the entire sequence? This cannot be undone.")) {
-        setSynthState(prev => {
-            const newSteps = Array(3).fill(0).map(() => Array(16).fill({ notes: [], enabled: true, probability: 1.0 }));
-            const newShiftSteps = Array(16).fill(0);
-            return { ...prev, sequencer: { ...prev.sequencer, steps: newSteps, shiftSteps: newShiftSteps } };
-        });
-    }
+  const handleClearTrack = useCallback((trackIndex: number) => {
+      setSynthState(prev => {
+          const newSteps = JSON.parse(JSON.stringify(prev.sequencer.steps));
+          newSteps[trackIndex] = Array(16).fill({ notes: [], enabled: true, probability: 1.0 });
+          return { ...prev, sequencer: { ...prev.sequencer, steps: newSteps } };
+      });
+  }, []);
+
+  const handleClearShift = useCallback(() => {
+      setSynthState(prev => {
+          const newShiftSteps = Array(16).fill(0);
+          return { ...prev, sequencer: { ...prev.sequencer, shiftSteps: newShiftSteps } };
+      });
   }, []);
 
   const handleSave = useCallback(() => {
@@ -408,7 +413,8 @@ const App = () => {
             onDetailsClick={(track, step, rect) => setEditingStepDetails({track, step, rect})}
             onStepToggle={handleStepToggle}
             onContextMenu={handleContextMenu}
-            onClear={handleClearSequencer}
+            onClearTrack={handleClearTrack}
+            onClearShift={handleClearShift}
             onShiftChange={handleShiftStepChange}
             isMobile={isMobile}
             shiftDuration={synthState.sequencer.shiftDuration}

@@ -1,6 +1,6 @@
 
-import React, { useRef } from 'react';
-import { X, SlidersHorizontal, MoveUpRight, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { X, SlidersHorizontal, MoveUpRight, ChevronUp, ChevronDown, Check } from 'lucide-react';
 import { noteToString, hexToRgba } from '../utils';
 import { SequencerTrack } from '../types';
 
@@ -14,7 +14,8 @@ interface SequencerProps {
     onStepClick: (track: number, step: number, rect: DOMRect) => void;
     onStepToggle: (track: number, step: number) => void;
     onContextMenu: (e: React.MouseEvent, track: number, step: number) => void;
-    onClear: () => void;
+    onClearTrack: (trackIndex: number) => void;
+    onClearShift: () => void;
     onShiftChange: (step: number, value: number) => void;
     isMobile: boolean;
     onDetailsClick: (track: number, step: number, rect: DOMRect) => void;
@@ -22,7 +23,7 @@ interface SequencerProps {
     onShiftDurationChange: (duration: number) => void;
 }
 
-export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCount, currentStep, currentShiftStep, oscColors, onStepClick, onStepToggle, onContextMenu, onClear, onShiftChange, isMobile, onDetailsClick, shiftDuration, onShiftDurationChange }) => {
+export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCount, currentStep, currentShiftStep, oscColors, onStepClick, onStepToggle, onContextMenu, onClearTrack, onClearShift, onShiftChange, isMobile, onDetailsClick, shiftDuration, onShiftDurationChange }) => {
     const lastTap = useRef<{time: number, track: number, step: number} | null>(null);
 
     const handleStepTouchStart = (e: React.TouchEvent, track: number, step: number) => {
@@ -47,11 +48,54 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
         }
     };
 
-    const clearButton = (
-      <button onClick={onClear} className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-base md:text-xs bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm shadow-sm z-20">
-        <X size={14} /> Clear
-      </button>
-    );
+    const ConfirmClearButton = ({ onConfirm, title }: { onConfirm: () => void, title: string }) => {
+        const [isConfirming, setIsConfirming] = useState(false);
+        const ref = useRef<HTMLDivElement>(null);
+        
+        useEffect(() => {
+            const handleOutside = (e: MouseEvent) => {
+                if (ref.current && !ref.current.contains(e.target as Node)) {
+                    setIsConfirming(false);
+                }
+            }
+            if (isConfirming) window.addEventListener('click', handleOutside);
+            return () => window.removeEventListener('click', handleOutside);
+        }, [isConfirming]);
+
+        if (isConfirming) {
+             return (
+                 <div ref={ref} className="w-6 flex-none relative h-full z-50">
+                    <div className="absolute right-0 top-0 bottom-0 w-16 bg-gray-800 flex items-center justify-evenly rounded border border-gray-600 shadow-xl">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setIsConfirming(false); }} 
+                            className="text-gray-400 hover:text-white flex items-center justify-center h-full w-1/2"
+                        >
+                            <X size={12} />
+                        </button>
+                        <div className="w-px h-3 bg-gray-600"></div>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onConfirm(); setIsConfirming(false); }} 
+                            className="text-red-500 hover:text-red-400 flex items-center justify-center h-full w-1/2"
+                        >
+                            <Check size={14} strokeWidth={3} />
+                        </button>
+                    </div>
+                 </div>
+             )
+        }
+
+        return (
+             <button 
+                onClick={(e) => { e.stopPropagation(); setIsConfirming(true); }} 
+                className="w-6 flex-none flex items-center justify-center bg-white/5 hover:bg-red-500/20 text-gray-600 hover:text-red-400 rounded transition-colors"
+                title={title}
+            >
+                <X size={12} />
+            </button>
+        );
+    }
+
+    const Spacer = () => <div className="w-6 flex-none" />;
   
     const renderStep = (track: SequencerTrack, stepIndex: number, trackIndex: number) => {
         const stepData = track[stepIndex];
@@ -143,12 +187,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
         const isCurrent = currentShiftStep === stepIndex;
         const shiftVal = shiftSteps[stepIndex];
         
-        // Range -9 to 9 (19 steps)
-        const norm = (shiftVal + 9) / 18; // 0.0 to 1.0
-        
-        // Darkness/Saturation Logic
-        // -9 (Darkest): L=15%, S=90%
-        // +9 (Lightest): L=90%, S=50%
+        const norm = (shiftVal + 9) / 18; 
         const lightness = 15 + (norm * 75); 
         const saturation = 90 - (norm * 40);
         
@@ -190,10 +229,6 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
     return (
       <div className="flex-1 flex flex-col min-h-0 bg-panel-bg">
         <div className="flex-1 flex flex-col min-h-0 bg-[#121212] overflow-hidden relative">
-          {/* Clear Button Floated Top Right */}
-          <div className="absolute top-2 right-2 z-20">
-              {clearButton}
-          </div>
 
           <div className={`flex-1 flex flex-col p-2 gap-2 overflow-y-auto ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
             {steps.map((track, trackIndex) => {
@@ -202,9 +237,11 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
                   <div key={trackIndex} className="flex flex-col flex-1 min-h-0 gap-1 pb-1 mb-1">
                     <div className="flex flex-1 gap-1 min-h-0">
                         {Array.from({ length: 8 }).map((_, i) => renderStep(track, i, trackIndex))}
+                        <ConfirmClearButton onConfirm={() => onClearTrack(trackIndex)} title="Clear Track" />
                     </div>
                     <div className="flex flex-1 gap-1 min-h-0">
                         {Array.from({ length: 8 }).map((_, i) => renderStep(track, i + 8, trackIndex))}
+                        <Spacer />
                     </div>
                   </div>
                 );
@@ -212,6 +249,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
               return (
                 <div key={trackIndex} className="flex gap-1 flex-1 min-h-0 basis-0">
                   {Array.from({ length: stepCount }).map((_, stepIndex) => renderStep(track, stepIndex, trackIndex))}
+                  <ConfirmClearButton onConfirm={() => onClearTrack(trackIndex)} title="Clear Track" />
                 </div>
               );
             })}
@@ -242,14 +280,17 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
                      <div className="flex flex-col flex-1 min-h-0 gap-1">
                         <div className="flex flex-1 gap-1 min-h-0">
                             {Array.from({ length: 8 }).map((_, i) => renderShiftStep(i))}
+                            <ConfirmClearButton onConfirm={onClearShift} title="Clear Shift Lane" />
                         </div>
                         <div className="flex flex-1 gap-1 min-h-0">
                             {Array.from({ length: 8 }).map((_, i) => renderShiftStep(i + 8))}
+                            <Spacer />
                         </div>
                      </div>
                  ) : (
                      <div className="flex gap-1 flex-1 min-h-0 basis-0 h-16">
                          {Array.from({ length: stepCount }).map((_, stepIndex) => renderShiftStep(stepIndex))}
+                         <ConfirmClearButton onConfirm={onClearShift} title="Clear Shift Lane" />
                      </div>
                  )}
             </div>

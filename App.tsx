@@ -296,7 +296,7 @@ const App = () => {
       });
   }, []);
 
-  const handleClearShift = useCallback(() => {
+  const handleClearShift = useCallback((trackIndex?: number) => {
       setSynthState(prev => {
           const newShiftSteps = Array(16).fill(0);
           return { ...prev, sequencer: { ...prev.sequencer, shiftSteps: newShiftSteps } };
@@ -362,7 +362,7 @@ const App = () => {
             className={`flex-none w-full flex flex-col ${isMobile ? 'overflow-y-auto' : 'overflow-visible'}`}
             style={{ maxHeight: isMobile ? 'calc(100% - 100px)' : 'none' }} 
         >
-            <main className="flex flex-col lg:flex-row w-full p-2 gap-2">
+            <main className="flex flex-col lg:flex-row w-full p-2 lg:pb-0 gap-2">
                 <div className="flex flex-col flex-1 lg:flex-[1.6] min-w-0">
                     <Synths
                         oscillators={synthState.oscillators}

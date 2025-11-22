@@ -185,12 +185,17 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
         const isCurrent = currentShiftStep === stepIndex;
         const shiftVal = shiftSteps[stepIndex];
         
-        const norm = (shiftVal + 9) / 18; 
-        const lightness = 15 + (norm * 75); 
-        const saturation = 90 - (norm * 40);
-        
-        const bg = `hsl(270, ${saturation}%, ${lightness}%)`;
-        const textColor = lightness > 50 ? '#000' : '#fff';
+        let bg = '#000000';
+        let textColor = '#ffffff';
+
+        if (shiftVal !== 0) {
+            const norm = (shiftVal + 9) / 18; 
+            const lightness = 15 + (norm * 75); 
+            const saturation = 90 - (norm * 40);
+            
+            bg = `hsl(270, ${saturation}%, ${lightness}%)`;
+            textColor = lightness > 50 ? '#000' : '#fff';
+        }
         
         return (
             <div key={stepIndex} className={`flex-1 min-w-0 h-full ${isMobile ? 'rounded' : 'rounded-lg'} bg-[#1a1a1a] flex flex-col items-stretch justify-between relative shadow-sm overflow-hidden group`}>
@@ -228,7 +233,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
       <div className="flex-1 flex flex-col min-h-0 bg-panel-bg">
         <div className="flex-1 flex flex-col min-h-0 bg-[#121212] overflow-hidden relative">
 
-          <div className={`flex-1 flex flex-col p-2 gap-2 overflow-y-auto ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
+          <div className={`flex-1 flex flex-col px-4 pb-4 pt-2 gap-2 overflow-y-auto ${!isMobile ? 'min-w-[800px]' : 'pb-4'}`}>
             {steps.map((track, trackIndex) => {
               if (isMobile) {
                 return (

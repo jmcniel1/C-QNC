@@ -37,7 +37,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
       <div className="p-2 border-b border-gray-800 flex items-center gap-3">
         <h3 className="text-gray-400 font-semibold text-sm uppercase tracking-wider pl-1 shrink-0">O{settings.id}</h3>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-grow items-center justify-between gap-2">
             <div className="relative h-9 bg-black/40 rounded-lg flex items-center min-w-[80px]">
                 <select
                     onChange={(e) => {
@@ -89,8 +89,8 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
             min={0}
             max={1}
             step={0.01}
-            color="#444"
-            dotColor="white"
+            color={color}
+            dotColor="black"
             size={controlSize}
           />
           
@@ -123,8 +123,12 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
           <div className="flex flex-col space-y-1 items-center text-center">
             <button 
               onClick={() => onOscChange('muted', !settings.muted)} 
-              className={`rounded-full flex items-center justify-center transition-colors ${settings.muted ? 'bg-red-700/50' : 'bg-fader-bg'}`}
-              style={{ width: `${controlSize}px`, height: `${controlSize}px` }}
+              className={`rounded-full flex items-center justify-center transition-colors ${settings.muted ? 'text-white' : 'bg-black text-gray-400 hover:text-gray-200'}`}
+              style={{ 
+                  width: `${controlSize}px`, 
+                  height: `${controlSize}px`,
+                  backgroundColor: settings.muted ? color : 'black' 
+              }}
               aria-label={settings.muted ? "Unmute Oscillator" : "Mute Oscillator"}
             >
               {settings.muted ? <VolumeX size={22} /> : <Volume2 size={22} />}

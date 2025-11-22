@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Rotate3d, Box, Disc, Waves } from 'lucide-react';
+import { Box, Disc, Waves } from 'lucide-react';
 import { Knob } from '../ui/Knob';
 import { ReverbSettings } from '../../types';
 
@@ -19,8 +20,8 @@ export const ReverbPanel: React.FC<ReverbPanelProps> = ({ settings, onChange }) 
 
   return (
     <div className="flex flex-col justify-between h-auto md:h-full w-full">
-      <h3 className="text-gray-400 p-2 flex items-center gap-1 font-semibold">
-          <Rotate3d size={14} /> Reverb
+      <h3 className="text-white p-2 flex items-center gap-1 font-semibold">
+          Reverb
       </h3>
       <div className="flex-grow-0 md:flex-grow flex flex-row justify-center items-center gap-6 py-8 md:py-2 md:flex-col md:space-y-4 md:gap-0">
           <div className="w-[40%] md:w-[60%] shrink-0">
@@ -36,9 +37,9 @@ export const ReverbPanel: React.FC<ReverbPanelProps> = ({ settings, onChange }) 
                 <button key={id}
                     onClick={() => onChange('model', id)}
                     title={label}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md ${
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                         settings.model !== id 
-                        ? 'bg-panel-bg hover:bg-gray-700 text-gray-400' 
+                        ? 'bg-black hover:bg-gray-700 text-gray-400' 
                         : 'scale-110'
                     }`}
                     style={settings.model === id ? { backgroundColor: fxColor, color: activeIconColor } : {}}

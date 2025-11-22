@@ -138,9 +138,9 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
       <div className="flex flex-col space-y-2 py-2 px-1 border-b border-gray-800">
         <h4 className="text-center text-gray-500 text-xs uppercase font-semibold tracking-wider">FX Sends</h4>
         <div className="flex justify-around items-center text-sm">
-            <Knob label="Delay" value={settings.sends.delay} onChange={v => onOscChange('sends', {...settings.sends, delay: v})} min={0} max={1} step={0.01} color="#444" dotColor="white" size={40} />
-            <Knob label="Disto" value={settings.sends.disto} onChange={v => onOscChange('sends', {...settings.sends, disto: v})} min={0} max={1} step={0.01} color="#444" dotColor="white" size={40} />
-            <Knob label="Reverb" value={settings.sends.reverb} onChange={v => onOscChange('sends', {...settings.sends, reverb: v})} min={0} max={1} step={0.01} color="#444" dotColor="white" size={40} />
+            <Knob label="Delay" value={settings.sends.delay} onChange={v => onOscChange('sends', {...settings.sends, delay: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} />
+            <Knob label="Disto" value={settings.sends.disto} onChange={v => onOscChange('sends', {...settings.sends, disto: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} />
+            <Knob label="Reverb" value={settings.sends.reverb} onChange={v => onOscChange('sends', {...settings.sends, reverb: v})} min={0} max={1} step={0.01} color={color} dotColor="black" size={40} />
             <div className="flex flex-col space-y-1" style={{width: 100}}>
               <Knob 
                 label="Freq"
@@ -149,8 +149,8 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                 min={20}
                 max={20000}
                 logarithmic
-                color="#444"
-                dotColor="white"
+                color={color}
+                dotColor="black"
                 size={36}
                 layout="horizontal"
                 precision={0}
@@ -162,8 +162,8 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                 min={0}
                 max={1}
                 step={0.01}
-                color="#444"
-                dotColor="white"
+                color={color}
+                dotColor="black"
                 size={36}
                 layout="horizontal"
               />

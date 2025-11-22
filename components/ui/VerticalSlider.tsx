@@ -10,7 +10,7 @@ interface VerticalSliderProps {
     color?: string;
 }
 
-export const VerticalSlider: React.FC<VerticalSliderProps> = ({ label, value, onChange, min = 0, max = 1, step = 0.01, color = '#f59e0b' }) => {
+export const VerticalSlider: React.FC<VerticalSliderProps> = ({ label, value, onChange, min = 0, max = 1, step = 0.01, color = '#faa917' }) => {
     const sliderRef = useRef<HTMLDivElement>(null);
   
     const handleValueChange = (clientY: number) => {

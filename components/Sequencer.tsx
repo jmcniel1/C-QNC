@@ -94,8 +94,6 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
             </button>
         );
     }
-
-    const Spacer = () => <div className="w-6 flex-none" />;
   
     const renderStep = (track: SequencerTrack, stepIndex: number, trackIndex: number) => {
         const stepData = track[stepIndex];
@@ -234,15 +232,16 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
             {steps.map((track, trackIndex) => {
               if (isMobile) {
                 return (
-                  <div key={trackIndex} className="flex flex-col flex-1 min-h-0 gap-1 pb-1 mb-1">
-                    <div className="flex flex-1 gap-1 min-h-0">
-                        {Array.from({ length: 8 }).map((_, i) => renderStep(track, i, trackIndex))}
-                        <ConfirmClearButton onConfirm={() => onClearTrack(trackIndex)} title="Clear Track" />
+                  <div key={trackIndex} className="flex flex-1 min-h-0 gap-1 pb-1 mb-1">
+                    <div className="flex flex-col flex-1 gap-1 min-h-0">
+                        <div className="flex flex-1 gap-1 min-h-0">
+                            {Array.from({ length: 8 }).map((_, i) => renderStep(track, i, trackIndex))}
+                        </div>
+                        <div className="flex flex-1 gap-1 min-h-0">
+                            {Array.from({ length: 8 }).map((_, i) => renderStep(track, i + 8, trackIndex))}
+                        </div>
                     </div>
-                    <div className="flex flex-1 gap-1 min-h-0">
-                        {Array.from({ length: 8 }).map((_, i) => renderStep(track, i + 8, trackIndex))}
-                        <Spacer />
-                    </div>
+                    <ConfirmClearButton onConfirm={() => onClearTrack(trackIndex)} title="Clear Track" />
                   </div>
                 );
               }
@@ -277,15 +276,16 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
                      </div>
                  </div>
                  {isMobile ? (
-                     <div className="flex flex-col flex-1 min-h-0 gap-1">
-                        <div className="flex flex-1 gap-1 min-h-0">
-                            {Array.from({ length: 8 }).map((_, i) => renderShiftStep(i))}
-                            <ConfirmClearButton onConfirm={onClearShift} title="Clear Shift Lane" />
+                     <div className="flex flex-1 min-h-0 gap-1">
+                        <div className="flex flex-col flex-1 gap-1 min-h-0">
+                            <div className="flex flex-1 gap-1 min-h-0">
+                                {Array.from({ length: 8 }).map((_, i) => renderShiftStep(i))}
+                            </div>
+                            <div className="flex flex-1 gap-1 min-h-0">
+                                {Array.from({ length: 8 }).map((_, i) => renderShiftStep(i + 8))}
+                            </div>
                         </div>
-                        <div className="flex flex-1 gap-1 min-h-0">
-                            {Array.from({ length: 8 }).map((_, i) => renderShiftStep(i + 8))}
-                            <Spacer />
-                        </div>
+                        <ConfirmClearButton onConfirm={onClearShift} title="Clear Shift Lane" />
                      </div>
                  ) : (
                      <div className="flex gap-1 flex-1 min-h-0 basis-0 h-16">

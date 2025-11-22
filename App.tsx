@@ -357,15 +357,15 @@ const App = () => {
             className={`flex-none w-full flex flex-col ${isMobile ? 'overflow-y-auto' : 'overflow-visible'}`}
             style={{ maxHeight: isMobile ? 'calc(100% - 100px)' : 'none' }} 
         >
-            <main className={`flex flex-col lg:flex-row w-full`}>
-                <div className="flex flex-col w-full lg:w-2/3 xl:w-3/5 lg:flex-shrink-0">
+            <main className="flex flex-col lg:flex-row w-full p-2 gap-2">
+                <div className="flex flex-col flex-1 lg:flex-[1.6] min-w-0">
                     <Synths
-                    oscillators={synthState.oscillators}
-                    onOscChange={handleOscChange}
-                    onADSRChange={handleADSRChange}
+                        oscillators={synthState.oscillators}
+                        onOscChange={handleOscChange}
+                        onADSRChange={handleADSRChange}
                     />
                 </div>
-                <div className="flex flex-col w-full lg:w-1/3 xl:w-2/5">
+                <div className="flex flex-col flex-1 lg:flex-1 min-w-0">
                     <FX settings={synthState.fx} onChange={handleFXChange} />
                 </div>
             </main>
@@ -378,7 +378,7 @@ const App = () => {
             />
         )}
 
-        <footer id="sequencer-panel" className={`bg-panel-bg border-t border-gray-800 transition-transform duration-300 ease-in-out flex flex-col
+        <footer id="sequencer-panel" className={`bg-panel-bg transition-transform duration-300 ease-in-out flex flex-col
             ${isMobile 
                 ? 'fixed bottom-0 left-0 right-0 w-full z-[1002] h-[90vh]' 
                 : 'flex-1 min-h-0 relative'

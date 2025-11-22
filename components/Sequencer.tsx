@@ -1,7 +1,6 @@
 
 import React, { useRef } from 'react';
 import { X, SlidersHorizontal, MoveUpRight, ChevronUp, ChevronDown } from 'lucide-react';
-import { Panel } from './ui/Panel';
 import { noteToString, hexToRgba } from '../utils';
 import { SequencerTrack } from '../types';
 
@@ -189,7 +188,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
     const durationOptions = [1, 2, 4, 16, 32];
 
     return (
-      <Panel className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 bg-panel-bg">
         <div className="flex-1 flex flex-col min-h-0 bg-[#121212] overflow-hidden relative">
           {/* Clear Button Floated Top Right */}
           <div className="absolute top-2 right-2 z-20">
@@ -200,7 +199,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
             {steps.map((track, trackIndex) => {
               if (isMobile) {
                 return (
-                  <div key={trackIndex} className="flex flex-col flex-1 min-h-0 gap-1 border-b border-gray-700/50 pb-1 mb-1">
+                  <div key={trackIndex} className="flex flex-col flex-1 min-h-0 gap-1 pb-1 mb-1">
                     <div className="flex flex-1 gap-1 min-h-0">
                         {Array.from({ length: 8 }).map((_, i) => renderStep(track, i, trackIndex))}
                     </div>
@@ -218,7 +217,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
             })}
 
             {/* Shift Lane */}
-            <div className={`flex flex-col flex-1 gap-1 mt-2 border-t border-gray-800 pt-2 ${isMobile ? 'min-h-[200px]' : 'min-h-0'}`}>
+            <div className={`flex flex-col flex-1 gap-1 mt-2 pt-2 ${isMobile ? 'min-h-[200px]' : 'min-h-0'}`}>
                  <div className="flex items-center gap-4 px-1 mb-1">
                      <div className="flex items-center gap-2 text-purple-400 text-xs font-semibold uppercase tracking-wider">
                         <MoveUpRight size={12} /> Shift (Circle of 5ths)
@@ -256,6 +255,6 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
             </div>
           </div>
         </div>
-      </Panel>
+      </div>
     );
 };

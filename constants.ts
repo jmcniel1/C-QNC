@@ -1,7 +1,3 @@
-
-
-
-
 import { SynthState, ADSRSettings, OscillatorSettings, SequencerState, TransportState, FXState } from './types';
 
 export const oscColors = ['#0e446e', '#00482f', '#b5461b'];
@@ -56,7 +52,7 @@ export const initialFX: FXState = {
   distortion: { depth: 0, level: 0.8, model: 'overdrive' },
 };
 
-// Normalized Presets to 50% Volume
+// Normalized Presets to ~50-70% Volume
 export const PRESETS = [
   {
     name: 'Init',
@@ -73,19 +69,19 @@ export const PRESETS = [
     settings: {
       wave: 'sine' as const,
       octave: -2,
-      vol: 0.5,
-      adsr: { attack: 0.01, decay: 0.2, sustain: 0.9, release: 0.2 },
-      filter: { freq: 150, res: 0.1 }
+      vol: 0.6,
+      adsr: { attack: 0.01, decay: 0.3, sustain: 0.8, release: 0.3 },
+      filter: { freq: 180, res: 0.0 }
     }
   },
   {
-    name: 'Reese',
+    name: 'Reese Bass',
     settings: {
       wave: 'sawtooth' as const,
       octave: -2,
-      vol: 0.5,
+      vol: 0.55,
       adsr: { attack: 0.05, decay: 0.3, sustain: 0.7, release: 0.4 },
-      filter: { freq: 800, res: 0.5 }
+      filter: { freq: 500, res: 0.4 }
     }
   },
   {
@@ -94,7 +90,7 @@ export const PRESETS = [
       wave: 'triangle' as const,
       octave: 0,
       vol: 0.5,
-      adsr: { attack: 0.8, decay: 0.5, sustain: 0.6, release: 1.2 },
+      adsr: { attack: 0.8, decay: 0.5, sustain: 0.6, release: 1.5 },
       filter: { freq: 1200, res: 0.2 }
     }
   },
@@ -103,19 +99,19 @@ export const PRESETS = [
     settings: {
       wave: 'square' as const,
       octave: 1,
-      vol: 0.5,
-      adsr: { attack: 0.01, decay: 0.2, sustain: 0.6, release: 0.3 },
-      filter: { freq: 4000, res: 0.5 }
+      vol: 0.45,
+      adsr: { attack: 0.02, decay: 0.2, sustain: 0.6, release: 0.4 },
+      filter: { freq: 3500, res: 0.3 }
     }
   },
   {
-    name: 'Pluck',
+    name: 'Retro Pluck',
     settings: {
       wave: 'square' as const,
       octave: 0,
       vol: 0.5,
-      adsr: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 },
-      filter: { freq: 800, res: 0.5 }
+      adsr: { attack: 0.001, decay: 0.25, sustain: 0.0, release: 0.15 },
+      filter: { freq: 1000, res: 0.4 }
     }
   },
   {
@@ -123,19 +119,19 @@ export const PRESETS = [
     settings: {
       wave: 'sawtooth' as const,
       octave: 0,
-      vol: 0.5,
-      adsr: { attack: 0.4, decay: 0.2, sustain: 0.8, release: 0.8 },
-      filter: { freq: 6000, res: 0.5 }
+      vol: 0.45,
+      adsr: { attack: 0.5, decay: 0.4, sustain: 0.7, release: 0.8 },
+      filter: { freq: 6000, res: 0.3 }
     }
   },
   {
-    name: 'Brass',
+    name: 'Brass Section',
     settings: {
       wave: 'sawtooth' as const,
       octave: -1,
       vol: 0.5,
-      adsr: { attack: 0.15, decay: 0.2, sustain: 0.7, release: 0.3 },
-      filter: { freq: 2500, res: 0.5 }
+      adsr: { attack: 0.1, decay: 0.2, sustain: 0.6, release: 0.35 },
+      filter: { freq: 2500, res: 0.4 }
     }
   },
   {
@@ -143,39 +139,69 @@ export const PRESETS = [
     settings: {
       wave: 'triangle' as const,
       octave: 0,
-      vol: 0.5,
-      adsr: { attack: 0.01, decay: 0.5, sustain: 0.3, release: 0.4 },
-      filter: { freq: 3000, res: 0.5 }
+      vol: 0.6,
+      adsr: { attack: 0.01, decay: 0.8, sustain: 0.25, release: 0.4 },
+      filter: { freq: 2000, res: 0.3 }
     }
   },
   {
-    name: 'Crystal',
+    name: 'Bell/Chime',
     settings: {
       wave: 'sine' as const,
       octave: 2,
       vol: 0.5,
-      adsr: { attack: 0.01, decay: 0.8, sustain: 0.1, release: 1.5 },
-      filter: { freq: 8000, res: 0.1 }
+      adsr: { attack: 0.01, decay: 0.8, sustain: 0.0, release: 1.8 },
+      filter: { freq: 9000, res: 0.1 }
     }
   },
   {
-    name: 'Acid',
+    name: 'Acid Bass',
     settings: {
       wave: 'sawtooth' as const,
       octave: -1,
       vol: 0.5,
-      adsr: { attack: 0.01, decay: 0.4, sustain: 0.1, release: 0.1 },
-      filter: { freq: 1500, res: 0.8 }
+      adsr: { attack: 0.01, decay: 0.3, sustain: 0.0, release: 0.1 },
+      filter: { freq: 1100, res: 0.85 }
     }
   },
   {
-    name: 'Organ',
+    name: 'Lo-Fi Organ',
     settings: {
       wave: 'triangle' as const,
       octave: 1,
       vol: 0.5,
       adsr: { attack: 0.05, decay: 0.1, sustain: 1.0, release: 0.1 },
-      filter: { freq: 5000, res: 0.5 }
+      filter: { freq: 4000, res: 0.2 }
+    }
+  },
+  {
+    name: '808 Kick',
+    settings: {
+      wave: 'sine' as const,
+      octave: -3,
+      vol: 0.95,
+      adsr: { attack: 0.001, decay: 0.35, sustain: 0.0, release: 0.15 },
+      filter: { freq: 1500, res: 0.0 }
+    }
+  },
+  {
+    name: 'Snare',
+    settings: {
+      wave: 'triangle' as const,
+      octave: 0,
+      vol: 0.75,
+      adsr: { attack: 0.001, decay: 0.12, sustain: 0.0, release: 0.1 },
+      filter: { freq: 2500, res: 0.4 }
+    }
+  },
+  {
+    name: 'Closed Hat',
+    settings: {
+      wave: 'sawtooth' as const,
+      octave: 3,
+      vol: 0.35,
+      adsr: { attack: 0.001, decay: 0.05, sustain: 0.0, release: 0.04 },
+      filter: { freq: 14000, res: 0.0 }
     }
   }
 ];

@@ -71,7 +71,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
         style={{ backgroundColor: hexToRgba(color, 0.06) }}
     >
       <div 
-        className="p-2 border-b flex-grow-0"
+        className="px-2 py-2 border-b flex-grow-0"
         style={{ borderBottomColor: borderColor }}
       >
         <div className="flex justify-between items-center w-full gap-2">
@@ -243,7 +243,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
         </div>
         
         <div 
-            className="flex flex-col justify-center gap-5 p-1 rounded-[6px]"
+            className="flex flex-col justify-center gap-5 py-1 px-[15px] rounded-[6px]"
             style={{ backgroundColor: hexToRgba(color, 0.15) }}
         >
               <Knob 

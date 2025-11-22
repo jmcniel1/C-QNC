@@ -39,7 +39,7 @@ export const DistortionPanel: React.FC<DistortionPanelProps> = ({ settings, onCh
                 <button key={id}
                     onClick={() => onChange('model', id)}
                     title={label}
-                    className={`flex-1 h-10 rounded-full flex items-center justify-center transition-all ${
+                    className={`flex-1 h-[84px] rounded-full flex items-center justify-center transition-all ${
                         settings.model !== id 
                         ? 'bg-black hover:bg-gray-700 text-gray-400' 
                         : 'text-white'

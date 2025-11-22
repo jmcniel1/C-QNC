@@ -95,10 +95,11 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       distoShaper.oversample = '4x'; 
 
       const reverb = context.createConvolver();
-      reverb.buffer = await generateImpulseResponse(context, state.fx.reverb.model, state.fx.reverb.decay, 4);
+      // Init reverb with default state time, adding 0.5s tail
+      reverb.buffer = await generateImpulseResponse(context, state.fx.reverb.model, state.fx.reverb.time, state.fx.reverb.time + 0.5);
       const reverbWetGain = context.createGain();
       const reverbInputGain = context.createGain();
-      reverbWetGain.gain.value = 1.0; 
+      reverbWetGain.gain.value = state.fx.reverb.depth; 
 
       // --- CONFIGURE & CONNECT FX ---
       delayFeedback.gain.value = state.fx.delay.feedback;
@@ -183,7 +184,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
         return pool;
       });
     } catch (e) { console.error("Web Audio API is not supported.", e); }
-  }, [state.fx.delay.feedback, state.fx.reverb.decay, state.fx.reverb.model]);
+  }, [state.fx.delay.feedback, state.fx.reverb.time, state.fx.reverb.model]);
 
   const playMetronomeClick = useCallback((time: number) => {
       const audioCtx = audioCtxRef.current;
@@ -386,16 +387,23 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
 
   useEffect(() => {
     const audioCtx = audioCtxRef.current;
-    const reverbNode = fxNodesRef.current.reverb;
-    if (!audioCtx || !reverbNode) return;
-    const { model, decay } = state.fx.reverb;
+    const { reverb, reverbWetGain } = fxNodesRef.current;
+    if (!audioCtx || !reverb || !reverbWetGain) return;
+    const { model, time, depth } = state.fx.reverb;
+    
+    // Update Wet Gain (Depth)
+    reverbWetGain.gain.setTargetAtTime(depth, audioCtx.currentTime, 0.05);
+
+    // Re-generate buffer only if model or time changes. 
+    // Debounce slightly to avoid heavy computation during knob drag
     const timeoutId = setTimeout(() => {
-        generateImpulseResponse(audioCtx, model, decay, 4).then(impulse => {
-            if(reverbNode) reverbNode.buffer = impulse;
+        // Generate buffer slightly longer than fade-out time
+        generateImpulseResponse(audioCtx, model, time, time + 0.5).then(impulse => {
+            if(reverb) reverb.buffer = impulse;
         });
     }, 50);
     return () => clearTimeout(timeoutId);
-  }, [state.fx.reverb.model, state.fx.reverb.decay]);
+  }, [state.fx.reverb.model, state.fx.reverb.time, state.fx.reverb.depth]);
 
   useEffect(() => {
       const { distoShaper, distoOutputGain, distoInputGain } = fxNodesRef.current;

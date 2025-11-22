@@ -92,28 +92,28 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
           
           <div className="flex flex-col items-center gap-1">
                 <div 
-                  className="flex flex-col items-center bg-black/20 rounded-lg border border-gray-700/50 overflow-hidden"
-                  style={{ height: `${controlSize}px`, width: '36px' }}
+                  className="flex flex-row items-center bg-black/20 rounded-lg border border-gray-700/50 overflow-hidden"
+                  style={{ height: `36px`, width: 'auto' }}
                 >
                     <button 
-                        onClick={() => onOscChange('octave', Math.min(4, settings.octave + 1))}
-                        className="flex-1 w-full flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30"
-                        disabled={settings.octave >= 4}
-                    >
-                        <Plus size={12} />
-                    </button>
-                    <div className="w-full py-[1px] text-center font-mono font-bold text-[10px] text-white bg-black/40">
-                        {settings.octave > 0 ? `+${settings.octave}` : settings.octave}
-                    </div>
-                    <button 
                         onClick={() => onOscChange('octave', Math.max(-4, settings.octave - 1))}
-                        className="flex-1 w-full flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30"
+                        className="w-8 h-full flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30"
                         disabled={settings.octave <= -4}
                     >
                         <Minus size={12} />
                     </button>
+                    <div className="w-8 h-full flex items-center justify-center font-mono font-bold text-[12px] text-white bg-black/40 border-x border-gray-800">
+                        {settings.octave > 0 ? `+${settings.octave}` : settings.octave}
+                    </div>
+                    <button 
+                        onClick={() => onOscChange('octave', Math.min(4, settings.octave + 1))}
+                        className="w-8 h-full flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30"
+                        disabled={settings.octave >= 4}
+                    >
+                        <Plus size={12} />
+                    </button>
                 </div>
-                <label className="text-base md:text-xs text-gray-400">Octave</label>
+                <label className="text-base md:text-xs text-gray-400 mt-2">Octave</label>
            </div>
 
           <div className="flex flex-col space-y-1 items-center text-center">

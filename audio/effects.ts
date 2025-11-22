@@ -1,3 +1,4 @@
+
 export async function generateImpulseResponse(audioCtx: AudioContext, model: string, decayTime: number, duration: number) {
     const sampleRate = audioCtx.sampleRate;
     const length = sampleRate * duration;
@@ -20,8 +21,8 @@ export async function generateImpulseResponse(audioCtx: AudioContext, model: str
                  envelope = Math.exp(-t / (decayTime * 0.8)) * (1 - Math.exp(-t * 20));
             }
             
-            // Noise burst scaled down to prevent clipping the convolver output
-            channelData[i] = (Math.random() * 2 - 1) * envelope * 0.5;
+            // Increased boost factor from 0.5 to 2.0 to make reverb stronger
+            channelData[i] = (Math.random() * 2 - 1) * envelope * 2.0;
         }
     }
     return impulse;

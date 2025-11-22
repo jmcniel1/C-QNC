@@ -1,8 +1,7 @@
 
 import React, { useRef } from 'react';
-import { X, SlidersHorizontal, MoveUpRight } from 'lucide-react';
+import { X, SlidersHorizontal, MoveUpRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { Panel } from './ui/Panel';
-import { Knob } from './ui/Knob';
 import { noteToString, hexToRgba } from '../utils';
 import { SequencerTrack } from '../types';
 
@@ -145,26 +144,44 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
         const isCurrent = currentShiftStep === stepIndex;
         const shiftVal = shiftSteps[stepIndex];
         
+        // Range -9 to 9 (19 steps)
+        const norm = (shiftVal + 9) / 18; // 0.0 to 1.0
+        
+        // Darkness/Saturation Logic
+        // -9 (Darkest): L=15%, S=90%
+        // +9 (Lightest): L=90%, S=50%
+        const lightness = 15 + (norm * 75); 
+        const saturation = 90 - (norm * 40);
+        
+        const bg = `hsl(270, ${saturation}%, ${lightness}%)`;
+        const textColor = lightness > 50 ? '#000' : '#fff';
+        
         return (
-            <div key={stepIndex} className={`flex-1 min-w-0 h-full ${isMobile ? 'rounded' : 'rounded-lg'} bg-[#1a1a1a] flex flex-col items-center justify-center border border-gray-800 relative shadow-sm`}>
+            <div key={stepIndex} className={`flex-1 min-w-0 h-full ${isMobile ? 'rounded' : 'rounded-lg'} bg-[#1a1a1a] flex flex-col items-stretch justify-between border border-gray-800 relative shadow-sm overflow-hidden group`}>
                 {isCurrent && (
-                  <div className="absolute inset-0 bg-white/10 pointer-events-none rounded-lg" />
+                  <div className="absolute inset-0 border-2 border-purple-400/50 rounded-lg pointer-events-none z-20" />
                 )}
-                <div className="scale-75 md:scale-90">
-                    <Knob 
-                        value={shiftVal} 
-                        onChange={(v) => onShiftChange(stepIndex, v)}
-                        min={-9}
-                        max={9}
-                        step={1}
-                        precision={0}
-                        color="#8b5cf6" // Violet for Shift
-                        dotColor="white"
-                        size={36}
-                        textColor={shiftVal !== 0 ? "text-purple-300 font-bold" : "text-gray-600"}
-                        label={shiftVal > 0 ? `+${shiftVal}` : `${shiftVal}`}
-                    />
+                
+                <button 
+                    className="flex-1 flex items-center justify-center hover:bg-white/10 text-gray-500 hover:text-white transition-colors active:bg-white/20 focus:outline-none"
+                    onClick={() => onShiftChange(stepIndex, Math.min(9, shiftVal + 1))}
+                >
+                    <ChevronUp size={14} />
+                </button>
+                
+                <div 
+                    className="flex-1 mx-0.5 rounded-sm flex items-center justify-center text-sm md:text-xl font-bold font-mono select-none shadow-inner leading-none"
+                    style={{ backgroundColor: bg, color: textColor }}
+                >
+                    {shiftVal > 0 ? `+${shiftVal}` : shiftVal}
                 </div>
+
+                <button 
+                    className="flex-1 flex items-center justify-center hover:bg-white/10 text-gray-500 hover:text-white transition-colors active:bg-white/20 focus:outline-none"
+                    onClick={() => onShiftChange(stepIndex, Math.max(-9, shiftVal - 1))}
+                >
+                    <ChevronDown size={14} />
+                </button>
             </div>
         )
     };
@@ -196,7 +213,7 @@ export const Sequencer: React.FC<SequencerProps> = ({ steps, shiftSteps, stepCou
             })}
 
             {/* Shift Lane */}
-            <div className="flex flex-col flex-1 min-h-0 gap-1 mt-2 border-t border-gray-800 pt-2">
+            <div className={`flex flex-col flex-1 gap-1 mt-2 border-t border-gray-800 pt-2 ${isMobile ? 'min-h-[200px]' : 'min-h-0'}`}>
                  <div className="flex items-center gap-4 px-1 mb-1">
                      <div className="flex items-center gap-2 text-purple-400 text-xs font-semibold uppercase tracking-wider">
                         <MoveUpRight size={12} /> Shift (Circle of 5ths)

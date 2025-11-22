@@ -59,8 +59,8 @@ export interface TransportState {
 }
 
 export interface ReverbSettings {
-  decay: number;
-  predelay: number;
+  time: number;
+  depth: number;
   damper: number;
   model: 'hall' | 'plate' | 'room';
 }

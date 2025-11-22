@@ -45,7 +45,7 @@ export const initialSequencer: SequencerState = {
 export const initialTransport: TransportState = { isPlaying: false, bpm: 120, masterVolume: 0.8, metronomeOn: false, swing: 50, midiClockOut: false };
 
 export const initialFX: FXState = {
-  reverb: { decay: 2.5, predelay: 0.1, damper: 8000, model: 'hall' },
+  reverb: { time: 3, depth: 0.5, damper: 8000, model: 'hall' },
   delay: { time: 250, feedback: 0, division: '1/4' },
   distortion: { depth: 0, model: 'overdrive' },
 };

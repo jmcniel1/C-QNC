@@ -28,6 +28,9 @@ export const ReverbPanel: React.FC<ReverbPanelProps> = ({ settings, onChange }) 
           <div className="w-[40%] md:w-[60%] shrink-0">
             <Knob label="Time" value={settings.time} onChange={v => onChange('time', v)} min={0.1} max={10} step={0.1} color={fxColor} dotColor={activeIconColor} responsive precision={1} />
           </div>
+          <div className="w-[20%] md:w-[30%] shrink-0">
+             <Knob label="Gain" centerLabel="G" value={settings.gain} onChange={v => onChange('gain', v)} min={0} max={3} step={0.1} color={fxColor} dotColor={activeIconColor} responsive size={28} textSize="text-[10px]" />
+          </div>
           <div className="w-[40%] md:w-[60%] shrink-0">
             <Knob label="Depth" value={settings.depth} onChange={v => onChange('depth', v)} min={0} max={1} step={0.01} color={fxColor} dotColor={activeIconColor} responsive />
           </div>

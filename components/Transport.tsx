@@ -1,14 +1,14 @@
 
-
 import React, { useRef } from 'react';
 import { Play, Pause, Cable, Save, Upload } from 'lucide-react';
 import { Panel } from './ui/Panel';
 import { Knob } from './ui/Knob';
 import { Oscilloscope } from './Oscilloscope';
-import { TransportState } from '../types';
+import { TransportState, OscillatorSettings } from '../types';
 
 interface TransportProps {
     settings: TransportState;
+    oscillators: OscillatorSettings[];
     onChange: (key: keyof TransportState, value: any) => void;
     onSave: () => void;
     onLoad: (file: File) => void;
@@ -17,7 +17,7 @@ interface TransportProps {
     analysers: React.MutableRefObject<AnalyserNode[]>;
 }
 
-export const Transport: React.FC<TransportProps> = ({ settings, onChange, onSave, onLoad, isScrolled, isMobile = false, analysers }) => {
+export const Transport: React.FC<TransportProps> = ({ settings, oscillators, onChange, onSave, onLoad, isScrolled, isMobile = false, analysers }) => {
   // Increased knob sizes by approx 20%
   const knobSize = isMobile ? 34 : (isScrolled ? 24 : 30);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +39,7 @@ export const Transport: React.FC<TransportProps> = ({ settings, onChange, onSave
     >
       <div className="flex flex-col md:flex-row items-stretch justify-between h-full w-full">
         <div className="flex flex-grow md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 relative overflow-hidden min-h-[48px] md:min-h-0">
-            <Oscilloscope analysers={analysers} />
+            <Oscilloscope analysers={analysers} oscillators={oscillators} />
             <div className="absolute inset-0 flex z-10">
                 <button 
                     onClick={() => onChange('isPlaying', !settings.isPlaying)}

@@ -1,15 +1,21 @@
-
-
 import { useEffect, useRef, useCallback } from 'react';
-import { SynthState, FxNodes, OscFxSendNodes } from '../types';
+import { SynthState, FxNodes, OscFxSendNodes, Note, ArpMode } from '../types';
 import { Voice } from '../audio/Voice';
 import { generateImpulseResponse, makeDistortionCurve } from '../audio/effects';
 import { shiftNoteByFifths } from '../utils';
+import { noteNames } from '../constants';
 
 const MAX_VOICES_PER_OSC = 8;
-const OSC_GAIN_SCALE = 0.2; // Scale down internal gain to prevent clipping at max volume
+const OSC_GAIN_SCALE = 0.1; // Scale down internal gain to prevent clipping at max volume
 
-export const useSynth = (state: SynthState, onStepChange: (steps: { main: number, shift: number }) => void) => {
+interface ActiveArp {
+    notes: Note[];
+    ticksRemaining: number;
+    currentIndex: number;
+    mode: ArpMode;
+}
+
+export const useSynth = (state: SynthState, onStepChange: (steps: { main: number, shift: number, arpTriggers: number[] }) => void) => {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const voicePoolRef = useRef<Voice[][]>([]);
   const activeVoicesRef = useRef<Voice[]>([]);
@@ -28,8 +34,11 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
   const oscAnalysersRef = useRef<AnalyserNode[]>([]);
   const midiAccessRef = useRef<MIDIAccess | null>(null);
   
+  // ARP State
+  const activeArpsRef = useRef<{ [trackIndex: number]: ActiveArp | null }>({});
+
   // Visual Sync Queue
-  const visualQueueRef = useRef<{ main: number, shift: number, time: number }[]>([]);
+  const visualQueueRef = useRef<{ main: number, shift: number, time: number, arpTriggers: number[] }[]>([]);
   const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => { stateRef.current = state; }, [state]);
@@ -89,6 +98,11 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       const delay = context.createDelay(5);
       const delayFeedback = context.createGain();
       const delayInputGain = context.createGain();
+      // Dub Delay Filter
+      const delayFilter = context.createBiquadFilter();
+      delayFilter.type = 'lowpass';
+      delayFilter.frequency.value = 2500;
+      delayFilter.Q.value = 0.7;
 
       const distoInputGain = context.createGain();
       const distoShaper = context.createWaveShaper();
@@ -100,13 +114,19 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       reverb.buffer = await generateImpulseResponse(context, state.fx.reverb.model, state.fx.reverb.time, state.fx.reverb.time + 0.5);
       const reverbWetGain = context.createGain();
       const reverbInputGain = context.createGain();
+      const reverbOutputGain = context.createGain();
+      
       reverbWetGain.gain.value = state.fx.reverb.depth; 
+      reverbOutputGain.gain.value = state.fx.reverb.gain;
 
       // --- CONFIGURE & CONNECT FX ---
       delayFeedback.gain.value = state.fx.delay.feedback;
       delayInputGain.connect(delay);
+      // Delay Feedback Loop with Filter (Dub Style)
       delay.connect(delayFeedback);
-      delayFeedback.connect(delay);
+      delayFeedback.connect(delayFilter);
+      delayFilter.connect(delay);
+      
       delay.connect(masterGainRef.current);
 
       distoInputGain.gain.value = 1.0; 
@@ -116,10 +136,13 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
 
       reverbInputGain.connect(reverbWetGain);
       reverbWetGain.connect(reverb);
-      reverb.connect(masterGainRef.current);
+      reverb.connect(reverbOutputGain);
+      reverbOutputGain.connect(masterGainRef.current);
 
       fxNodesRef.current = { 
-          reverb, reverbWetGain, delay, delayFeedback, delayInputGain, reverbInputGain,
+          reverb, reverbWetGain, reverbOutputGain, 
+          delay, delayFeedback, delayInputGain, delayFilter,
+          reverbInputGain,
           distoInputGain, distoShaper, distoOutputGain
       };
 
@@ -129,7 +152,6 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       const oscGains = currentOscillators.map((osc) => {
           const g = context.createGain();
           // CRITICAL FIX: Initialize with correctly scaled volume immediately
-          // Without this, gains default to 1.0 causing a loud burst until the first useEffect runs
           const initialGain = osc.muted ? 0 : osc.vol * OSC_GAIN_SCALE;
           g.gain.value = initialGain;
           return g;
@@ -152,7 +174,6 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
         
         oscFilter.type = 'lowpass';
         oscFilter.frequency.value = oscSettings.filter.freq;
-        // Clamp Q to safe values to prevent self-oscillation screaming
         const safeQ = Math.min(30, Math.pow(oscSettings.filter.res, 3) * 20 + 0.1);
         oscFilter.Q.value = safeQ;
 
@@ -185,7 +206,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
         return pool;
       });
     } catch (e) { console.error("Web Audio API is not supported.", e); }
-  }, [state.fx.delay.feedback, state.fx.reverb.time, state.fx.reverb.model]);
+  }, [state.fx.delay.feedback, state.fx.reverb.time, state.fx.reverb.model, state.fx.reverb.gain]);
 
   const playMetronomeClick = useCallback((time: number) => {
       const audioCtx = audioCtxRef.current;
@@ -208,14 +229,54 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       });
   }, []);
 
+  const getArpNote = (notes: Note[], index: number, mode: ArpMode) => {
+      // Sort notes by pitch (using name parsing)
+      const sortedNotes = [...notes].sort((a, b) => {
+         const octA = parseInt(a.name.slice(-1));
+         const octB = parseInt(b.name.slice(-1));
+         if (octA !== octB) return octA - octB;
+         const nameA = a.name.slice(0, -1);
+         const nameB = b.name.slice(0, -1);
+         return noteNames.indexOf(nameA) - noteNames.indexOf(nameB);
+      });
+      
+      const len = sortedNotes.length;
+      if (len === 0) return null;
+
+      let noteIndex = 0;
+      
+      switch (mode) {
+          case 'up':
+              noteIndex = index % len;
+              break;
+          case 'down':
+              noteIndex = (len - 1 - (index % len));
+              break;
+          case 'random':
+              noteIndex = Math.floor(Math.random() * len);
+              break;
+          case 'converge':
+               // Converge: Low, High, Low+1, High-1...
+               const cycleIndex = index % len;
+               if (cycleIndex % 2 === 0) {
+                   // Even indices (0, 2, 4): Increasing from bottom
+                   noteIndex = cycleIndex / 2;
+               } else {
+                   // Odd indices (1, 3, 5): Decreasing from top
+                   noteIndex = len - 1 - Math.floor(cycleIndex / 2);
+               }
+               break;
+      }
+      
+      return sortedNotes[noteIndex];
+  };
+
   const tick = useCallback((scheduledTime: number, stepDuration: number) => {
     const audioCtx = audioCtxRef.current;
     if (!audioCtx) return;
     const { sequencer, oscillators, transport } = stateRef.current;
     const { stepCount, steps, shiftSteps, shiftDuration } = sequencer;
-    
-    activeVoicesRef.current.forEach(voice => voice.off(audioCtx, scheduledTime));
-    activeVoicesRef.current = [];
+    const { bpm } = transport;
     
     const nextStep = (currentStepRef.current + 1) % stepCount;
     currentStepRef.current = nextStep;
@@ -224,11 +285,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
     const shiftStepIndex = Math.floor(totalTicksRef.current / multiplier) % 16;
     totalTicksRef.current++;
 
-    visualQueueRef.current.push({ 
-        main: nextStep, 
-        shift: shiftStepIndex, 
-        time: scheduledTime 
-    });
+    const arpTriggers: number[] = [];
 
     if (transport.metronomeOn && nextStep % 4 === 0) {
         playMetronomeClick(scheduledTime);
@@ -244,28 +301,87 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
     }
     
     const currentShift = shiftSteps[shiftStepIndex] || 0;
+    const secondsPerBeat = 60.0 / bpm;
+    const sixteenthNoteDuration = secondsPerBeat / 4;
 
     steps.forEach((track, trackIndex) => {
       const stepData = track[nextStep];
-      const shouldPlay = stepData && stepData.enabled && stepData.notes.length > 0 && (Math.random() < (stepData.probability ?? 1.0));
+      const oscSettings = oscillators[trackIndex];
+      const hasHit = stepData && stepData.enabled && stepData.notes.length > 0 && (Math.random() < (stepData.probability ?? 1.0));
 
-      if (shouldPlay) {
-        const oscSettings = oscillators[trackIndex];
-        const voicePool = voicePoolRef.current[trackIndex];
-        
-        stepData.notes.forEach(note => {
-          const voice = voicePool.find(v => v.isAvailable);
-          if (voice) {
-            voice.update(oscSettings);
-            const noteToPlay = currentShift !== 0 
-                ? shiftNoteByFifths(note.name, currentShift) 
-                : note.name;
-            voice.on(noteToPlay, oscSettings.octave, audioCtx, scheduledTime, note.velocity);
-            activeVoicesRef.current.push(voice);
+      const voicePool = voicePoolRef.current[trackIndex];
+      
+      // If we have a new hit on this step
+      if (hasHit) {
+          if (oscSettings.arp) {
+              // START ARP
+              activeArpsRef.current[trackIndex] = {
+                  notes: stepData.notes,
+                  ticksRemaining: Math.max(1, oscSettings.hold) - 1, // Play first note now, remaining later
+                  currentIndex: 1, // Next index
+                  mode: oscSettings.arpMode
+              };
+              
+              // Play first ARP note
+              const note = getArpNote(stepData.notes, 0, oscSettings.arpMode);
+              if (note) {
+                  const voice = voicePool.find(v => v.isAvailable);
+                  if (voice) {
+                      voice.update(oscSettings);
+                      const noteToPlay = currentShift !== 0 ? shiftNoteByFifths(note.name, currentShift) : note.name;
+                      // Arp notes are short (1/16th) with slight gate separation
+                      voice.on(noteToPlay, oscSettings.octave, audioCtx, scheduledTime, note.velocity);
+                      voice.off(audioCtx, scheduledTime + sixteenthNoteDuration * 0.95);
+                      activeVoicesRef.current.push(voice);
+                      arpTriggers.push(trackIndex);
+                  }
+              }
+          } else {
+              // STANDARD CHORD PLAYBACK (No Arp)
+              activeArpsRef.current[trackIndex] = null; // Kill any running arp
+              const holdSteps = oscSettings.hold || 1;
+              const noteDuration = sixteenthNoteDuration * holdSteps;
+              
+              stepData.notes.forEach(note => {
+                const voice = voicePool.find(v => v.isAvailable);
+                if (voice) {
+                  voice.update(oscSettings);
+                  const noteToPlay = currentShift !== 0 ? shiftNoteByFifths(note.name, currentShift) : note.name;
+                  voice.on(noteToPlay, oscSettings.octave, audioCtx, scheduledTime, note.velocity);
+                  voice.off(audioCtx, scheduledTime + noteDuration);
+                  activeVoicesRef.current.push(voice);
+                }
+              });
           }
-        });
+      } else {
+          // No Hit on this step - Check for Active Arp continuation
+          const activeArp = activeArpsRef.current[trackIndex];
+          if (activeArp && activeArp.ticksRemaining > 0) {
+              const note = getArpNote(activeArp.notes, activeArp.currentIndex, activeArp.mode);
+              if (note) {
+                  const voice = voicePool.find(v => v.isAvailable);
+                  if (voice) {
+                      voice.update(oscSettings);
+                      const noteToPlay = currentShift !== 0 ? shiftNoteByFifths(note.name, currentShift) : note.name;
+                      voice.on(noteToPlay, oscSettings.octave, audioCtx, scheduledTime, note.velocity);
+                      voice.off(audioCtx, scheduledTime + sixteenthNoteDuration * 0.95);
+                      activeVoicesRef.current.push(voice);
+                      arpTriggers.push(trackIndex);
+                  }
+              }
+              activeArp.ticksRemaining--;
+              activeArp.currentIndex++;
+          }
       }
     });
+
+    visualQueueRef.current.push({ 
+        main: nextStep, 
+        shift: shiftStepIndex, 
+        time: scheduledTime,
+        arpTriggers
+    });
+
   }, [playMetronomeClick, sendMidiMessage]);
 
   const scheduler = useCallback(() => {
@@ -305,7 +421,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
             while (visualQueueRef.current.length > 0 && visualQueueRef.current[0].time <= now) {
                 const event = visualQueueRef.current.shift();
                 if (event) {
-                    onStepChange({ main: event.main, shift: event.shift });
+                    onStepChange({ main: event.main, shift: event.shift, arpTriggers: event.arpTriggers });
                 }
             }
         }
@@ -324,6 +440,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       currentStepRef.current = -1;
       totalTicksRef.current = 0; 
       visualQueueRef.current = []; 
+      activeArpsRef.current = {};
       nextStepTimeRef.current = (audioCtxRef.current?.currentTime ?? 0) + 0.05;
       
       if (stateRef.current.transport.midiClockOut) {
@@ -342,14 +459,16 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       totalTicksRef.current = 0;
       
       visualQueueRef.current = [];
-      onStepChange({ main: -1, shift: -1 });
+      activeArpsRef.current = {};
+      onStepChange({ main: -1, shift: -1, arpTriggers: [] });
       
       if (stateRef.current.transport.midiClockOut) {
           sendMidiMessage([0xFC]);
       }
 
       if (audioCtxRef.current) {
-        activeVoicesRef.current.forEach(v => v.off(audioCtxRef.current!, audioCtxRef.current!.currentTime));
+        // Stop ALL voices from the pool explicitly to ensure silence
+        voicePoolRef.current.flat().forEach(v => v.off(audioCtxRef.current!, audioCtxRef.current!.currentTime));
         activeVoicesRef.current = [];
       }
     }
@@ -361,7 +480,6 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
       if (!audioCtxRef.current) return;
       const now = audioCtxRef.current.currentTime;
       state.oscillators.forEach((osc, i) => {
-          // Apply OSC_GAIN_SCALE to scale the UI volume (0-1) to a safe internal range (0-0.2)
           const gainValue = osc.muted ? 0 : osc.vol * OSC_GAIN_SCALE;
           
           if (gainValue < 0.001) {
@@ -388,12 +506,14 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
 
   useEffect(() => {
     const audioCtx = audioCtxRef.current;
-    const { reverb, reverbWetGain } = fxNodesRef.current;
-    if (!audioCtx || !reverb || !reverbWetGain) return;
-    const { model, time, depth } = state.fx.reverb;
+    const { reverb, reverbWetGain, reverbOutputGain } = fxNodesRef.current;
+    if (!audioCtx || !reverb || !reverbWetGain || !reverbOutputGain) return;
+    const { model, time, depth, gain } = state.fx.reverb;
     
     // Update Wet Gain (Depth)
     reverbWetGain.gain.setTargetAtTime(depth, audioCtx.currentTime, 0.05);
+    // Update Output Gain (Makeup Gain)
+    reverbOutputGain.gain.setTargetAtTime(gain, audioCtx.currentTime, 0.05);
 
     // Re-generate buffer only if model or time changes. 
     // Debounce slightly to avoid heavy computation during knob drag
@@ -404,7 +524,7 @@ export const useSynth = (state: SynthState, onStepChange: (steps: { main: number
         });
     }, 50);
     return () => clearTimeout(timeoutId);
-  }, [state.fx.reverb.model, state.fx.reverb.time, state.fx.reverb.depth]);
+  }, [state.fx.reverb.model, state.fx.reverb.time, state.fx.reverb.depth, state.fx.reverb.gain]);
 
   useEffect(() => {
       const { distoShaper, distoOutputGain, distoInputGain } = fxNodesRef.current;

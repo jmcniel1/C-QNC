@@ -1,10 +1,9 @@
 
-
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { noteNames as notes } from '../constants';
 import { Note, SequencerStep } from '../types';
-import { analyzeSequence } from '../audio/musicTheory';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { analyzeSequence, generateSuggestions } from '../audio/musicTheory';
+import { ArrowDown, ArrowUp, X } from 'lucide-react';
 
 interface PianoRollProps {
     activeNotes: Note[];
@@ -19,6 +18,7 @@ interface PianoRollProps {
 
 export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, onClose, onNoteToggle, onSetNotes, rect, oscColor, isMobile }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [selectedKey, setSelectedKey] = useState<string | null>(null);
     
     const desktopKeyWidth = 32;
     const mobileKeyWidth = typeof window !== 'undefined' ? window.innerWidth / 14 : 20;
@@ -46,7 +46,36 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
     const pianoWidth = whiteKeys.length * wKeyWidth;
 
     // Music Theory Analysis
-    const { keyName, suggestions } = useMemo(() => analyzeSequence(trackSteps), [trackSteps]);
+    const { keyName: detectedKey, suggestions: detectedSuggestions } = useMemo(() => analyzeSequence(trackSteps), [trackSteps]);
+
+    const { displayKey, currentSuggestions } = useMemo(() => {
+        if (selectedKey) {
+            const parts = selectedKey.split(' ');
+            const rootName = parts[0];
+            const scaleType = parts[1] as 'Major' | 'Minor';
+            const rootIndex = notes.indexOf(rootName);
+            
+            if (rootIndex !== -1 && (scaleType === 'Major' || scaleType === 'Minor')) {
+                return {
+                    displayKey: selectedKey,
+                    currentSuggestions: generateSuggestions(rootIndex, scaleType)
+                };
+            }
+        }
+        return {
+            displayKey: detectedKey,
+            currentSuggestions: detectedSuggestions
+        };
+    }, [selectedKey, detectedKey, detectedSuggestions]);
+
+    const allPossibleKeys = useMemo(() => {
+        const keys: string[] = [];
+        notes.forEach(n => {
+            keys.push(`${n} Major`);
+            keys.push(`${n} Minor`);
+        });
+        return keys;
+    }, []);
 
     let top, left, transform, containerClass, containerStyleWidth;
 
@@ -165,13 +194,38 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
                 style={{ top, left, transform, width: containerStyleWidth }}
                 onMouseDown={(e) => e.stopPropagation()}
             >
+                 {/* Close Button */}
+                 {!isMobile && (
+                    <button 
+                        onClick={onClose}
+                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors z-50"
+                    >
+                        <X size={16} strokeWidth={3} />
+                    </button>
+                 )}
+
                 {/* Smart Assist Panel */}
                 <div className={`bg-black/40 rounded-lg p-2 flex flex-col gap-1 ${isMobile ? 'mx-4' : ''}`}>
-                    <div className="flex items-center justify-start text-xs text-gray-400 px-1">
-                        <span>Key: <strong className="text-gray-200">{keyName}</strong></span>
+                    <div className="flex items-center justify-between text-xs text-gray-400 px-1">
+                        <div className="flex items-center gap-1">
+                            <span>Key:</span>
+                            <select 
+                                value={selectedKey || displayKey}
+                                onChange={(e) => setSelectedKey(e.target.value)}
+                                className="bg-gray-700 text-gray-200 rounded px-1 py-0.5 text-xs font-bold outline-none border border-gray-600 focus:border-primary-accent"
+                            >
+                                {allPossibleKeys.map(k => (
+                                    <option key={k} value={k}>{k}</option>
+                                ))}
+                            </select>
+                        </div>
+                        {/* Mobile Close Button inside panel */}
+                        {isMobile && (
+                             <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={16}/></button>
+                        )}
                     </div>
                     <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
-                        {suggestions.map((chord, idx) => (
+                        {currentSuggestions.map((chord, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => handleSuggestionClick(chord.notes, chord.name)}
@@ -187,87 +241,88 @@ export const PianoRoll: React.FC<PianoRollProps> = ({ activeNotes, trackSteps, o
                     </div>
                 </div>
 
-                {/* Scrollable Piano Container */}
-                <div 
-                    ref={scrollContainerRef}
-                    className="relative mx-auto mt-1 overflow-x-auto overflow-y-hidden scrollbar-hide" 
-                    style={{ width: '100%', height: `${pHeight + 20}px` }} 
-                >
-                    <div style={{ width: `${pianoWidth}px`, height: `${pHeight}px`, position: 'relative' }}>
-                        {whiteKeys.map((key, index) => {
-                            const isActive = activeNotes.some(n => n.name === key.id);
-                            return (
-                                <button
-                                    key={key.id}
-                                    onClick={() => onNoteToggle(key.id)}
-                                    className={`absolute top-0 bottom-0 transition-colors border-r border-b border-gray-900 text-black text-[10px] font-semibold rounded-b-[4px] flex items-end justify-center pb-1 ${
-                                        !isActive ? 'bg-gray-200 hover:bg-gray-300' : 'text-white'
-                                    }`}
-                                    style={{
-                                        left: `${index * wKeyWidth}px`,
-                                        width: `${wKeyWidth}px`,
-                                        height: `${wKeyHeight}px`,
-                                        backgroundColor: isActive ? oscColor : undefined,
-                                    }}
-                                >
-                                    {key.note.includes('C') && key.note.length === 1 ? key.id : ''}
-                                </button>
-                            );
-                        })}
-                        {blackKeys.map((key) => {
-                            const isActive = activeNotes.some(n => n.name === key.id);
-                            const keyNote = key.note;
-                            const keyOctave = key.octave;
-                            const whiteKeysBefore = (keyOctave - startOctave) * 7;
-                            let offsetInOctave = 0;
-                            if (keyNote.startsWith('C')) offsetInOctave = 1;
-                            else if (keyNote.startsWith('D')) offsetInOctave = 2;
-                            else if (keyNote.startsWith('F')) offsetInOctave = 4;
-                            else if (keyNote.startsWith('G')) offsetInOctave = 5;
-                            else if (keyNote.startsWith('A')) offsetInOctave = 6;
-                            
-                            const leftPos = (whiteKeysBefore + offsetInOctave) * wKeyWidth - (bKeyWidth / 2);
+                {/* Scrollable Piano Container with Floating Octave Controls */}
+                <div className="relative w-full">
+                    {/* Floating Octave Controls */}
+                    <button 
+                        onClick={() => handleOctaveShift(-1)}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 hover:bg-black/90 text-white p-2 rounded-r-lg transition-colors backdrop-blur-sm border border-l-0 border-white/10"
+                        disabled={activeNotes.length === 0}
+                        title="Octave Down"
+                    >
+                        <ArrowDown size={20} />
+                    </button>
+                     <button 
+                        onClick={() => handleOctaveShift(1)}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 hover:bg-black/90 text-white p-2 rounded-l-lg transition-colors backdrop-blur-sm border border-r-0 border-white/10"
+                        disabled={activeNotes.length === 0}
+                         title="Octave Up"
+                     >
+                        <ArrowUp size={20} />
+                    </button>
 
-                            return (
-                                <button
-                                    key={key.id}
-                                    onClick={() => onNoteToggle(key.id)}
-                                    className={`absolute top-0 z-10 transition-colors border border-black/50 rounded-b-[4px]
-                                        ${!isActive ? 'bg-black hover:bg-gray-800' : ''}`}
-                                    style={{
-                                        left: `${leftPos}px`,
-                                        width: `${bKeyWidth}px`,
-                                        height: `${bKeyHeight}px`,
-                                        backgroundColor: isActive ? oscColor : undefined,
-                                        opacity: isActive ? 0.9 : 1.0,
-                                    }}
-                                />
-                            );
-                        })}
+                    <div 
+                        ref={scrollContainerRef}
+                        className="relative mx-auto mt-1 overflow-x-auto overflow-y-hidden scrollbar-hide" 
+                        style={{ width: '100%', height: `${pHeight + 20}px` }} 
+                    >
+                        <div style={{ width: `${pianoWidth}px`, height: `${pHeight}px`, position: 'relative' }}>
+                            {whiteKeys.map((key, index) => {
+                                const isActive = activeNotes.some(n => n.name === key.id);
+                                return (
+                                    <button
+                                        key={key.id}
+                                        onClick={() => onNoteToggle(key.id)}
+                                        className={`absolute top-0 bottom-0 transition-colors border-r border-b border-gray-900 text-black text-[10px] font-semibold rounded-b-[4px] flex items-end justify-center pb-1 ${
+                                            !isActive ? 'bg-gray-200 hover:bg-gray-300' : 'text-white'
+                                        }`}
+                                        style={{
+                                            left: `${index * wKeyWidth}px`,
+                                            width: `${wKeyWidth}px`,
+                                            height: `${wKeyHeight}px`,
+                                            backgroundColor: isActive ? oscColor : undefined,
+                                        }}
+                                    >
+                                        {key.note.includes('C') && key.note.length === 1 ? key.id : ''}
+                                    </button>
+                                );
+                            })}
+                            {blackKeys.map((key) => {
+                                const isActive = activeNotes.some(n => n.name === key.id);
+                                const keyNote = key.note;
+                                const keyOctave = key.octave;
+                                const whiteKeysBefore = (keyOctave - startOctave) * 7;
+                                let offsetInOctave = 0;
+                                if (keyNote.startsWith('C')) offsetInOctave = 1;
+                                else if (keyNote.startsWith('D')) offsetInOctave = 2;
+                                else if (keyNote.startsWith('F')) offsetInOctave = 4;
+                                else if (keyNote.startsWith('G')) offsetInOctave = 5;
+                                else if (keyNote.startsWith('A')) offsetInOctave = 6;
+                                
+                                const leftPos = (whiteKeysBefore + offsetInOctave) * wKeyWidth - (bKeyWidth / 2);
+
+                                return (
+                                    <button
+                                        key={key.id}
+                                        onClick={() => onNoteToggle(key.id)}
+                                        className={`absolute top-0 z-10 transition-colors border border-black/50 rounded-b-[4px]
+                                            ${!isActive ? 'bg-black hover:bg-gray-800' : ''}`}
+                                        style={{
+                                            left: `${leftPos}px`,
+                                            width: `${bKeyWidth}px`,
+                                            height: `${bKeyHeight}px`,
+                                            backgroundColor: isActive ? oscColor : undefined,
+                                            opacity: isActive ? 0.9 : 1.0,
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
-
-                <div className="flex flex-col gap-2 pt-1">
-                    <div className="text-center text-base md:text-xs text-gray-400 min-h-[16px]">
-                        {activeNotes.length > 0 ? activeNotes.map(n => n.name).join(', ') : 'No notes selected'}
-                    </div>
-                    
-                    <div className="flex justify-center gap-2 pb-1">
-                         <button 
-                            onClick={() => handleOctaveShift(-1)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors disabled:opacity-50 shadow-sm"
-                            disabled={activeNotes.length === 0}
-                         >
-                            <ArrowDown size={12} /> Octave
-                         </button>
-                         <button 
-                            onClick={() => handleOctaveShift(1)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors disabled:opacity-50 shadow-sm"
-                            disabled={activeNotes.length === 0}
-                         >
-                            Octave <ArrowUp size={12} />
-                         </button>
-                    </div>
+                
+                <div className="text-center text-base md:text-xs text-gray-400 min-h-[16px] pt-1">
+                    {activeNotes.length > 0 ? activeNotes.map(n => n.name).join(', ') : 'No notes selected'}
                 </div>
             </div>
         </div>

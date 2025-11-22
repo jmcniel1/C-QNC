@@ -27,7 +27,10 @@ const defaultOscillator = (id: number): OscillatorSettings => ({
   filter: {
     freq: 20000,
     res: 0
-  }
+  },
+  hold: 1,
+  arp: false,
+  arpMode: 'up'
 });
 
 export const initialOsc: OscillatorSettings[] = [
@@ -46,7 +49,7 @@ export const initialSequencer: SequencerState = {
 export const initialTransport: TransportState = { isPlaying: false, bpm: 120, masterVolume: 0.8, metronomeOn: false, swing: 50, midiClockOut: false };
 
 export const initialFX: FXState = {
-  reverb: { time: 3, depth: 0.5, damper: 8000, model: 'hall' },
+  reverb: { time: 3, depth: 0.5, damper: 8000, model: 'hall', gain: 1.0 },
   delay: { time: 250, feedback: 0, division: '1/4' },
   distortion: { depth: 0, level: 0.8, model: 'overdrive' },
 };

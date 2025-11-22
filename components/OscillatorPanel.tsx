@@ -1,9 +1,10 @@
 
-import React from 'react';
-import { Volume2, VolumeX, Minus, Plus } from 'lucide-react';
+
+import React, { useEffect, useRef } from 'react';
+import { Volume2, VolumeX, Minus, Plus, ArrowUp, ArrowDown, Shuffle, Sparkles } from 'lucide-react';
 import { Knob } from './ui/Knob';
 import { ADSR } from './ADSR';
-import { OscillatorSettings, ADSRSettings } from '../types';
+import { OscillatorSettings, ADSRSettings, ArpMode } from '../types';
 import { PRESETS } from '../constants';
 import { hexToRgba } from '../utils';
 
@@ -12,6 +13,7 @@ interface OscillatorPanelProps {
     onOscChange: (key: keyof OscillatorSettings | 'filter' | 'sends', value: any) => void;
     onADSRChange: (key: keyof ADSRSettings, value: number) => void;
     color: string;
+    isArpTriggered?: boolean;
 }
 
 const WaveIcon = ({ type }: { type: string }) => {
@@ -25,9 +27,42 @@ const WaveIcon = ({ type }: { type: string }) => {
   }
 }
 
-export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOscChange, onADSRChange, color }) => {
+const ArpModeIcon = ({ mode }: { mode: ArpMode }) => {
+    const size = 14;
+    switch (mode) {
+        case 'up': return <ArrowUp size={size} strokeWidth={3} />;
+        case 'down': return <ArrowDown size={size} strokeWidth={3} />;
+        case 'random': return <Shuffle size={size} strokeWidth={3} />;
+        case 'converge': return <Sparkles size={size} strokeWidth={3} />;
+    }
+};
+
+export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOscChange, onADSRChange, color, isArpTriggered }) => {
   const waveforms = ['sine', 'square', 'sawtooth', 'triangle'];
+  const arpModes: ArpMode[] = ['up', 'down', 'random', 'converge'];
   const controlSize = 50;
+  const arpButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+      if (isArpTriggered && arpButtonRef.current) {
+          const btn = arpButtonRef.current;
+          // Blink effect
+          btn.style.backgroundColor = 'white';
+          btn.style.color = color;
+          setTimeout(() => {
+              if (btn) {
+                btn.style.backgroundColor = 'transparent';
+                btn.style.color = 'white';
+              }
+          }, 100);
+      }
+  }, [isArpTriggered, color]);
+  
+  const cycleArpMode = () => {
+      const currentIndex = arpModes.indexOf(settings.arpMode);
+      const nextIndex = (currentIndex + 1) % arpModes.length;
+      onOscChange('arpMode', arpModes[nextIndex]);
+  };
   
   return (
     <div 
@@ -91,8 +126,8 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
             color={color}
             dotColor="black"
             size={controlSize}
-            textColor="text-white"
-            textSize="text-xs"
+            textColor="text-white font-bold"
+            textSize="text-sm"
           />
           
           <div className="flex flex-col items-center gap-1">
@@ -118,8 +153,49 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
                         <Plus size={12} />
                     </button>
                 </div>
-                <label className="text-xs text-white">Octave</label>
+                <label className="text-sm font-bold text-white">Octave</label>
            </div>
+
+           <Knob
+            label="Hold"
+            value={settings.hold}
+            onChange={(v) => onOscChange('hold', v)}
+            min={1}
+            max={16}
+            step={1}
+            color={color}
+            dotColor="black"
+            size={controlSize}
+            textColor="text-white font-bold"
+            textSize="text-sm"
+            precision={0}
+          />
+
+          {/* NEW ARP CONTROLS */}
+          <div className="flex flex-col items-center gap-1.5 pt-0.5">
+              <div className="flex items-center gap-1">
+                  {/* Tiny Vertical Toggle */}
+                  <button 
+                    onClick={() => onOscChange('arp', !settings.arp)}
+                    className={`w-4 h-9 rounded-full p-0.5 transition-colors relative flex flex-col items-center justify-between border border-white/10 ${settings.arp ? '' : 'bg-black/40'}`}
+                    style={{ backgroundColor: settings.arp ? color : undefined }}
+                    title="Arp Toggle"
+                  >
+                      <div className={`w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-all duration-200 ${settings.arp ? 'mt-0' : 'mt-[1.2rem]'}`} />
+                  </button>
+
+                  {/* Tiny Mode Button */}
+                  <button
+                    ref={arpButtonRef}
+                    onClick={cycleArpMode}
+                    className="w-6 h-6 rounded-full flex items-center justify-center bg-black/40 hover:bg-white/10 border border-white/10 text-white transition-all duration-75"
+                    title={`Arp Mode: ${settings.arpMode}`}
+                  >
+                     <ArpModeIcon mode={settings.arpMode} />
+                  </button>
+              </div>
+              <label className="text-sm font-bold text-white">A</label>
+          </div>
 
           <div className="flex flex-col space-y-1 items-center text-center">
             <button 
@@ -135,7 +211,7 @@ export const OscillatorPanel: React.FC<OscillatorPanelProps> = ({ settings, onOs
               {settings.muted ? <VolumeX size={22} /> : <Volume2 size={22} />}
             </button>
             <div>
-              <label className="text-xs text-white">Mute</label>
+              <label className="text-sm font-bold text-white">Mute</label>
             </div>
           </div>
       </div>

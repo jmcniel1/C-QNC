@@ -24,6 +24,8 @@ export interface SendsSettings {
   disto: number;
 }
 
+export type ArpMode = 'up' | 'down' | 'random' | 'converge';
+
 export interface OscillatorSettings {
   id: number;
   wave: 'sine' | 'square' | 'sawtooth' | 'triangle';
@@ -33,6 +35,9 @@ export interface OscillatorSettings {
   sends: SendsSettings;
   muted: boolean;
   filter: FilterSettings;
+  hold: number;
+  arp: boolean;
+  arpMode: ArpMode;
 }
 
 export interface SequencerStep {
@@ -65,6 +70,7 @@ export interface ReverbSettings {
   depth: number;
   damper: number;
   model: 'hall' | 'plate' | 'room';
+  gain: number;
 }
 
 export interface DelaySettings {
@@ -95,9 +101,11 @@ export interface SynthState {
 export interface FxNodes {
   reverb?: ConvolverNode;
   reverbWetGain?: GainNode;
+  reverbOutputGain?: GainNode;
   delay?: DelayNode;
   delayFeedback?: GainNode;
   delayInputGain?: GainNode;
+  delayFilter?: BiquadFilterNode;
   reverbInputGain?: GainNode;
   distoInputGain?: GainNode;
   distoShaper?: WaveShaperNode;

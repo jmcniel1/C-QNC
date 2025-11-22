@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSynth } from './hooks/useSynth';
 import { Transport } from './components/Transport';
@@ -75,6 +74,7 @@ const App = () => {
   });
   const [currentStep, setCurrentStep] = useState(-1);
   const [currentShiftStep, setCurrentShiftStep] = useState(-1);
+  const [activeArps, setActiveArps] = useState<number[]>([]);
   const [editingStep, setEditingStep] = useState<{track: number, step: number, rect: DOMRect} | null>(null);
   const [editingStepDetails, setEditingStepDetails] = useState<{track: number, step: number, rect: DOMRect} | null>(null);
   const [contextMenu, setContextMenu] = useState<{x: number, y: number, trackIndex: number, stepIndex: number, isEnabled: boolean} | null>(null);
@@ -89,9 +89,10 @@ const App = () => {
     setSequencerVisible(!isMobile);
   }, [isMobile]);
 
-  const handleStepUpdate = useCallback((steps: { main: number, shift: number }) => {
-      setCurrentStep(steps.main);
-      setCurrentShiftStep(steps.shift);
+  const handleStepUpdate = useCallback((data: { main: number, shift: number, arpTriggers: number[] }) => {
+      setCurrentStep(data.main);
+      setCurrentShiftStep(data.shift);
+      setActiveArps(data.arpTriggers);
   }, []);
 
   const { start, stop, initialize, analysers } = useSynth(synthState, handleStepUpdate);
@@ -359,6 +360,7 @@ const App = () => {
       <div className="h-full w-full bg-synth-bg flex flex-col font-sans text-gray-300 antialiased text-base" onClick={() => setContextMenu(null)}>
         <Transport
             settings={synthState.transport}
+            oscillators={synthState.oscillators}
             onChange={handleTransportChange}
             onSave={handleSave}
             onLoad={handleLoad}
@@ -379,6 +381,7 @@ const App = () => {
                         oscillators={synthState.oscillators}
                         onOscChange={handleOscChange}
                         onADSRChange={handleADSRChange}
+                        activeArps={activeArps} 
                     />
                 </div>
                 <div className="flex flex-col flex-1 lg:flex-1 min-w-0">

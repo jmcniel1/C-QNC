@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 
 interface KnobProps {
-    label?: string;
+    label?: string | null;
     value: number;
     onChange: (value: number) => void;
     min?: number;
@@ -19,9 +19,10 @@ interface KnobProps {
     precision?: number;
     responsive?: boolean;
     dragSensitivity?: number;
+    centerLabel?: string;
 }
 
-export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', textSize = '', size = 50, layout = 'vertical', precision = 2, responsive = false, dragSensitivity = 1 }) => {
+export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max = 100, step = 1, logarithmic = false, disabled = false, color = '#2d2d2d', dotColor = '#9ca3af', textColor = '', textSize = '', size = 50, layout = 'vertical', precision = 2, responsive = false, dragSensitivity = 1, centerLabel }) => {
   const knobRef = useRef<HTMLDivElement>(null);
   const previousY = useRef(0);
   const valueRef = useRef(value);
@@ -133,16 +134,23 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
             style={knobStyle}
         >
             <div className="w-full h-full" style={{ transform: `rotate(${percentage * 2.7 - 135}deg)` }}>
-            <div 
-                className={`rounded-full absolute left-1/2 -translate-x-1/2`}
-                style={{ 
-                    backgroundColor: dotColor,
-                    width: dotSizeVal,
-                    height: dotSizeVal,
-                    top: dotTopVal
-                }}
-            ></div>
+                <div 
+                    className={`rounded-full absolute left-1/2 -translate-x-1/2`}
+                    style={{ 
+                        backgroundColor: dotColor,
+                        width: dotSizeVal,
+                        height: dotSizeVal,
+                        top: dotTopVal
+                    }}
+                ></div>
             </div>
+
+            {/* Center Label (e.g. for mobile compact view) */}
+            {centerLabel && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-gray-400 font-bold text-xs select-none">{centerLabel}</span>
+                </div>
+            )}
         </div>
         
         {/* Large Dragging Value Overlay */}
@@ -164,9 +172,11 @@ export const Knob: React.FC<KnobProps> = ({ label, value, onChange, min = 0, max
         )}
       </div>
 
-      <div className={layout === 'horizontal' ? 'text-left' : 'text-center'}>
-        <label className={`${labelClass} ${textColor || 'text-gray-400'} whitespace-nowrap`}>{label}</label>
-      </div>
+      {label && (
+          <div className={layout === 'horizontal' ? 'text-left' : 'text-center'}>
+            <label className={`${labelClass} ${textColor || 'text-gray-400'} whitespace-nowrap`}>{label}</label>
+          </div>
+      )}
     </div>
   );
 };

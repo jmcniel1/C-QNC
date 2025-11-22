@@ -297,6 +297,42 @@ const App = () => {
         });
     }
   }, []);
+
+  const handleSave = useCallback(() => {
+      try {
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(synthState, null, 2));
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href", dataStr);
+          downloadAnchorNode.setAttribute("download", "cqnc_patch.json");
+          document.body.appendChild(downloadAnchorNode);
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+      } catch (err) {
+          console.error("Failed to save patch:", err);
+          alert("Error saving patch.");
+      }
+  }, [synthState]);
+
+  const handleLoad = useCallback((file: File) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+          try {
+              if (e.target?.result) {
+                  const json = JSON.parse(e.target.result as string);
+                  // Simple validation check
+                  if (json.transport && json.oscillators && json.sequencer && json.fx) {
+                      setSynthState(json);
+                  } else {
+                      throw new Error("Invalid patch format");
+                  }
+              }
+          } catch (err) {
+              console.error("Invalid patch file", err);
+              alert("Error loading patch. Invalid file format.");
+          }
+      };
+      reader.readAsText(file);
+  }, []);
   
   const activeNotesForPiano = editingStep ? synthState.sequencer.steps[editingStep.track][editingStep.step].notes : [];
   const activeStepDetails = editingStepDetails ? synthState.sequencer.steps[editingStepDetails.track][editingStepDetails.step] : null;
@@ -308,6 +344,8 @@ const App = () => {
         <Transport
             settings={synthState.transport}
             onChange={handleTransportChange}
+            onSave={handleSave}
+            onLoad={handleLoad}
             isScrolled={isScrolled}
             isMobile={isMobile}
             analysers={analysers}

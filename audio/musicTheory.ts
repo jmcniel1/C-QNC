@@ -132,10 +132,10 @@ export const analyzeSequence = (steps: SequencerStep[]): { keyName: string, sugg
         return intervals.map(interval => {
             const absNote = rootPC + interval;
             const pc = absNote % 12;
-            // Smart voicing: keep extensions in upper structure (octave 4/5)
-            // Base octave is 4. If interval > 12, it goes to 5.
+            // Smart voicing: keep extensions in upper structure (octave 3/4 now instead of 4/5)
+            // Base octave is 3. If interval > 12, it goes to 4.
             const octaveShift = Math.floor(absNote / 12);
-            return `${noteNames[pc]}${4 + octaveShift}`;
+            return `${noteNames[pc]}${3 + octaveShift}`;
         });
     };
 
